@@ -313,41 +313,32 @@ window.KF = window.KF || {};
          '</div>';
     h += '</div>';
 
-    /* 生成好的点单显眼地摆在这儿：复制走、发微信 —— 这是把点单送到
-       下厨的人手上的唯一一条路，所以它得是个大按钮，而不是一行小字。 */
+    /* 生成好的点单摆在这儿：要么"已经自动送到"，要么"还得手动发一次"。
+       下厨的人那边配了收单服务的话，这一条在他开页面时就自己进去了 ——
+       那种情况下不再摆手动那套，摆了反而让人以为没送到。 */
     if (s.sendPayload) {
-      /* 提交其实已经成功了，但"送没送到"是另一回事：
-         下厨的人那边配了收单服务，这一条在他开页面时就自己进去了；
-         没配（或者他手上是旧链接）就还得走手动那条路。
-         同一张卡按这个分两种长相 —— 自动送到的就不用再让人多做一个动作。 */
       const via = !!(s.sent && s.sent.viaServer);
-      if (!s.sendQr) s.sendQr = SH.qrDataUrl(s.sendPayload, 560);
-
-      /* 手动那套（复制链接 / 复制文字 / 二维码）在两种形态下都要在，
-         只是自动送到的形态里它收进一个折叠里当备用。 */
-      let manual = '<div class="btn-row">' +
-           '<button class="btn btn-primary" id="btn-send-order">复制，发给下厨的人</button>' +
-           '<button class="btn" id="btn-send-text">复制成文字版</button>' +
-           '</div>';
-      if (s.sendQr) {
-        manual += '<details class="send-qr"><summary>或者：让他扫这个二维码</summary>' +
-             '<div class="qr-box qr-box-sm"><img src="' + s.sendQr + '" alt="点单二维码"></div>' +
-             '<p class="hint" style="text-align:center">面对面的时候最省事：他拿手机扫一下，点单就直接进他那边了。</p>' +
-             '</details>';
-      }
 
       h += '<div class="card send-card' + (via ? ' send-card-ok' : '') + '">';
       if (via) {
         h += '<div class="card-head"><h2>已经发给下厨的人了</h2></div>';
         h += '<p class="hint">他那边打开「收到的点单」就能看到你点的菜，这一步不用再做了。</p>';
-        h += '<details class="send-fallback"><summary>他没收到？再手动发一条</summary>' +
-             '<p class="hint" style="margin:10px 0 8px">把下面这段发给他，' +
-             '他粘进「收到的点单」里一样能收。</p>' + manual + '</details>';
       } else {
+        /* 手动那套只在"没自动送到"时出现。二维码按需生成，省一次画布。 */
+        if (!s.sendQr) s.sendQr = SH.qrDataUrl(s.sendPayload, 560);
         h += '<div class="card-head"><h2>最后一步：发给下厨的人</h2></div>';
         h += '<p class="hint">点下面的按钮把内容复制下来，用微信发给他。' +
              '他打开就能看到你点的菜 —— 也不怕发不出去。</p>';
-        h += manual;
+        h += '<div class="btn-row">' +
+             '<button class="btn btn-primary" id="btn-send-order">复制，发给下厨的人</button>' +
+             '<button class="btn" id="btn-send-text">复制成文字版</button>' +
+             '</div>';
+        if (s.sendQr) {
+          h += '<details class="send-qr"><summary>或者：让他扫这个二维码</summary>' +
+               '<div class="qr-box qr-box-sm"><img src="' + s.sendQr + '" alt="点单二维码"></div>' +
+               '<p class="hint" style="text-align:center">面对面的时候最省事：他拿手机扫一下，点单就直接进他那边了。</p>' +
+               '</details>';
+        }
       }
       h += '</div>';
     }

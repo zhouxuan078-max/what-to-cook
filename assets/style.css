@@ -751,8 +751,8 @@ button.role-card:hover { background: var(--surface); }
 
 /* ---------- 点菜端生成完点单的那张卡 ---------- */
 
-/* 这是整条链路的最后一步，也是唯一一步"必须由人手动完成"的事
-   （把内容复制走、发微信）。所以它要比周围的卡片明显。 */
+/* 家人端最后一张卡：要么"已经送到"，要么"还得手动发一次"。
+   两种都比周围卡片明显一档。 */
 .send-card { border-color: #e8cfa8; background: var(--amber-soft); }
 .send-card .btn-row .btn-primary { flex: 1 1 100%; }
 .send-qr { margin-top: 14px; }
@@ -763,24 +763,9 @@ button.role-card:hover { background: var(--surface); }
 /* 粘进来的是一整段消息，可能几百字符。一行高会让人没法确认自己粘对了没有。 */
 #order-paste { min-height: 92px; font-size: 13px; line-height: 1.6; }
 
-/* ---------- 收单：两种形态下的折叠区 ---------- */
+/* ---------- 已经自动送到下厨的人那边了 ---------- */
 
-/* 自动收单开着的时候，粘贴框和那两个复制按钮都退居"备用"，
-   收进折叠里。折叠本身要做得低调 —— 它不该跟主路径抢注意力，
-   但一定要让人知道"万一没收到，这里还有一条路"。 */
-.paste-fallback, .send-fallback { margin-top: 12px; }
-.paste-fallback > summary, .send-fallback > summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--ink-2);
-  padding: 6px 0;
-}
-.paste-fallback[open] > summary, .send-fallback[open] > summary {
-  margin-bottom: 4px;
-  color: var(--ink);
-}
-
-/* 已经自动送到下厨的人那边了 —— 换成成功色，
+/* 手动那套（复制 / 二维码）在自动送到时整块不出现，
+   所以这里只剩成功色的卡片本身 ——
    跟前一张"还要你再手动发一次"的琥珀色卡片明显区分开。 */
 .send-card-ok { border-color: #b6d7bd; background: var(--herb-soft); }
-.send-card-ok .send-fallback { border-top: 1px solid var(--line); padding-top: 4px; }

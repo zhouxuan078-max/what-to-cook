@@ -30,6 +30,10 @@ window.KF = window.KF || {};
   const KEY_TAB = 'kf_cook_tab_v1';
   /* 收到的点单。以前它躺在服务器上，现在只在这台设备里 */
   const KEY_ORDERS = 'kf_orders_v1';
+  /* 被他手动清掉的点单 id。后端只有"写"和"读"、没有删除 ——
+     本地清空如果只是把 orders 数组清掉，下一轮轮询（8 秒后）
+     会把服务端的原单又拉回来，看上去就像清空按钮坏了。 */
+  const KEY_DROPS = 'kf_orders_drop_v1';
 
   let lastUnseen = 0;
   let stateTicker = null;
@@ -267,10 +271,14 @@ window.KF = window.KF || {};
 
       /* 从旧到新地收：addOrder 是 unshift 进数组的，
          倒着遍历才能让最新的那条排在最上面。 */
+      const drops = readDrops();
       let fresh = 0;
       for (let i = list.length - 1; i >= 0; i--) {
         const o = list[i];
         if (!o || !Array.isArray(o.items) || !o.items.length) continue;
+        /* 他手动清掉的那几条，服务端还在（要 7 天才过期），
+           但既然他说了清空，就别再自动塞回来。 */
+        if (o.id && drops.indexOf(String(o.id)) >= 0) continue;
         if (addOrder(o, o.id)) fresh++;
       }
 
@@ -2422,6 +2430,15 @@ window.KF = window.KF || {};
     U.store.set(KEY_ORDERS, arr.slice(0, 200));
   }
 
+  /* 已经被手动清掉的 id 单独存一份。留最近 500 条够用了。 */
+  function readDrops() {
+    const raw = U.store.get(KEY_DROPS, []);
+    return Array.isArray(raw) ? raw.map(String) : [];
+  }
+  function writeDrops(arr) {
+    U.store.set(KEY_DROPS, arr.slice(-500));
+  }
+
   /* 点单不再从服务器拉 —— 它就存在这台设备里。
      两条入口都走到这里：家人发来的那条链接（#/o/…），
      或者你把那段内容粘进输入框。 */
@@ -2517,13 +2534,18 @@ window.KF = window.KF || {};
     const m = U.openModal(
       '<h3>清空全部点单？</h3>' +
       '<p class="small muted" style="margin:8px 0 0">这台设备上收到的 <b>' + s.orders.length +
-      '</b> 条点单会全部删掉。家人发来的消息还留在微信里，想重收再点一次那条链接就行。</p>' +
+      '</b> 条点单会从列表里去掉。' +
+      (serverOn
+        ? '清掉之后它们不会再自己回来 —— 之后新来的点单照收不误。'
+        : '家人发来的消息还留在微信里，想重收再点一次那条链接就行。') + '</p>' +
       '<div class="btn-row" style="margin-top:14px">' +
       '<button class="btn btn-danger" id="clear-orders-yes">清空</button>' +
       '<button class="btn" id="clear-orders-no">取消</button></div>'
     );
     m.querySelector('#clear-orders-no').addEventListener('click', U.closeModal);
     m.querySelector('#clear-orders-yes').addEventListener('click', function () {
+      /* 先把要清掉的 id 记进 drops —— 不然 8 秒后轮询又把它们拉回来 */
+      writeDrops(readDrops().concat(readOrders().map(function (o) { return String(o.id); })));
       writeOrders([]);
       refreshOrders();
       U.closeModal();
@@ -2536,12 +2558,8 @@ window.KF = window.KF || {};
     let h = '';
 
     /* 收单这一块有两种形态，取决于这个站有没有配后端：
-         · 有后端 —— 自动收单是主路，粘贴是"万一没收到"的备份；
-         · 没后端 —— 粘贴就是主路（家人把内容发到微信里）。
-
-       两种形态都必须留着粘贴框，因为家人手上可能是旧链接（不带厨房编号），
-       那种链接走不了自动回传，只能靠粘。所以这里是"换个位置和说法"，
-       不是"二选一"。
+         · 有后端 —— 点单自己进来，页面上不摆任何"手动"的东西；
+         · 没后端 —— 粘贴是唯一的路（家人把内容发到微信里）。
 
        注意 #order-paste 这个 id 只在下面这个变量里出现一次 ——
        两处各写一遍的话，改一处漏一处，读取点单的按钮就会时灵时不灵。 */
@@ -2556,11 +2574,14 @@ window.KF = window.KF || {};
     if (serverOn) {
       h += '<div class="card-head"><h2>家人的点单</h2><div class="spacer"></div>' +
            '<button class="btn btn-sm" data-act="check-orders">检查新点单</button></div>';
-      h += '<p class="hint">家人点完「生成点单」就会直接进来，不用他们再发给你。' +
-           '这个页面开着的时候每几秒自动看一次。</p>';
-      h += '<details class="paste-fallback"><summary>没收到？把家人发来的内容粘进来</summary>' +
-           '<p class="hint" style="margin:10px 0 8px">家人手上要是旧链接，那边不会自动回传，' +
-           '会把内容发到微信里 —— 粘到这儿一样能收。</p>' + pasteBox + '</details>';
+      /* 这里不摆任何"手动"入口：点单是自己进来的。摆个粘贴框、或者写一行
+         "会自动看，不用他们发给你"的说明，反而让人怀疑"是不是没送到"。 */
+      /* 清空按钮原本跟着粘贴框一起走，粘贴框没了就得在这儿单独补回来。 */
+      if (s.orders.length) {
+        h += '<div class="btn-row" style="margin-top:12px">' +
+             '<button class="btn btn-ghost btn-sm" data-act="clear-orders">清空这几条</button>' +
+             '</div>';
+      }
     } else {
       h += '<div class="card-head"><h2>收家人发来的点单</h2></div>';
       h += '<p class="hint">家人选完菜会生成一段内容，用微信发给你。' +
