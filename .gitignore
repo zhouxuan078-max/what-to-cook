@@ -1,0 +1,28 @@
+# ---- 平台/编辑器 ----
+.workbuddy/
+.wbapp_*.genie
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 临时与验证产物 ----
+_probe.html
+_shot.html
+*.log
+*.tmp
+tmp/
+.cache/
+
+# ---- 依赖（本项目零依赖，纯静态，不需要构建） ----
+node_modules/
+__pycache__/
+*.pyc
+
+# ---- 本地私有配置 ----
+# 如果你把自己的密钥、私有题库之类放在这里，不会被提交
+.local/
+*.local.js
+.env
+.env.*
