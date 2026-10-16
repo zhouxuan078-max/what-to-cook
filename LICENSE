@@ -25,16 +25,16 @@ SOFTWARE.
 说明（非许可证正文）
 
 上面这份 MIT 只覆盖本仓库中由作者编写的代码，即：
-index.html、manifest.json、assets/ 下除 vendor/ 之外的全部文件、
-backend/ 下的 SQL。
+index.html、manifest.json、_worker.js、_routes.json、
+assets/ 下除 vendor/ 之外的全部文件、backend/ 下的 SQL。
 
 有一处例外，不随本许可证：
 
-  assets/vendor/wbcloud.js
+  assets/vendor/qrcode.js
 
-它是 WorkBuddy 云服务的客户端 SDK，由本项目自行托管以避开境外 CDN
-（见该项目历史上的一次修复：原来引用 cdn.jsdelivr.net，国内网络下
-经常加载不出来导致白屏）。版权归 WorkBuddy 官方，随本仓库分发仅为
-让站点能独立运行，不代表作者拥有其权利。
+它是第三方库 qrcode-generator 1.4.4（作者 Kazuhiko Arase），
+采用 MIT 许可。由本项目自行托管，是为了避开境外 CDN —— 原来引用
+cdn.jsdelivr.net，国内网络下经常加载不出来，后果是白屏。
+它本身也是 MIT，与本项目兼容，但版权归其作者。
 
-如果你要再分发本仓库，请自行确认该 SDK 的许可条款。
+如果你要再分发本仓库，请一并保留该文件的文件头声明。

@@ -636,8 +636,11 @@ details.steps li { margin-bottom: 5px; }
 .role-card p { margin: 0; font-size: 13.5px; color: var(--muted); }
 .role-card .go { margin-top: 14px; font-size: 13.5px; color: var(--primary); font-weight: 600; }
 
-.join-row { display: flex; gap: 10px; max-width: 340px; margin: 22px auto 0; }
-.join-row input { text-align: center; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; }
+.join-row { display: flex; gap: 10px; max-width: 460px; margin: 22px auto 0; }
+/* 这个框以前装的是 6 位菜单码，居中、加字距、转大写都合适。
+   现在它装的是"粘进来的一整段内容"（可能是一条一千多字符的链接），
+   那三样都会让它没法看，所以整组取消掉，改成左对齐的普通输入框。 */
+.join-row input { text-align: left; letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 13px; }
 
 /* ---------- 弹窗 ---------- */
 
@@ -727,3 +730,57 @@ button.role-card:hover { background: var(--surface); }
   .row { flex-wrap: wrap; }
   .row .fixed-140, .row .fixed-100 { width: 100%; }
 }
+
+/* ---------- 二维码 ---------- */
+
+/* 二维码必须是白底黑块。这里刻意不用主题变量：
+   跟着主题走的话，深色主题下会变成黑底浅块，一样扫不出来。 */
+.qr-box {
+  margin: 16px auto 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  line-height: 0;
+}
+.qr-box img { display: block; width: 260px; max-width: 78vw; height: auto; }
+.qr-box-sm { margin-top: 12px; padding: 8px; }
+.qr-box-sm img { width: 196px; }
+
+/* ---------- 点菜端生成完点单的那张卡 ---------- */
+
+/* 这是整条链路的最后一步，也是唯一一步"必须由人手动完成"的事
+   （把内容复制走、发微信）。所以它要比周围的卡片明显。 */
+.send-card { border-color: #e8cfa8; background: var(--amber-soft); }
+.send-card .btn-row .btn-primary { flex: 1 1 100%; }
+.send-qr { margin-top: 14px; }
+.send-qr > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
+
+/* ---------- 收单的粘贴框 ---------- */
+
+/* 粘进来的是一整段消息，可能几百字符。一行高会让人没法确认自己粘对了没有。 */
+#order-paste { min-height: 92px; font-size: 13px; line-height: 1.6; }
+
+/* ---------- 收单：两种形态下的折叠区 ---------- */
+
+/* 自动收单开着的时候，粘贴框和那两个复制按钮都退居"备用"，
+   收进折叠里。折叠本身要做得低调 —— 它不该跟主路径抢注意力，
+   但一定要让人知道"万一没收到，这里还有一条路"。 */
+.paste-fallback, .send-fallback { margin-top: 12px; }
+.paste-fallback > summary, .send-fallback > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-2);
+  padding: 6px 0;
+}
+.paste-fallback[open] > summary, .send-fallback[open] > summary {
+  margin-bottom: 4px;
+  color: var(--ink);
+}
+
+/* 已经自动送到下厨的人那边了 —— 换成成功色，
+   跟前一张"还要你再手动发一次"的琥珀色卡片明显区分开。 */
+.send-card-ok { border-color: #b6d7bd; background: var(--herb-soft); }
+.send-card-ok .send-fallback { border-top: 1px solid var(--line); padding-top: 4px; }

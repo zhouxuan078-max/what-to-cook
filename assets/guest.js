@@ -1,5 +1,5 @@
 /* ==========================================================================
-   点菜端：凭菜单码看菜单、打星、提交
+   点菜端：打开家人发来的菜单、打星、生成点单
    ========================================================================== */
 window.KF = window.KF || {};
 
@@ -7,31 +7,36 @@ window.KF = window.KF || {};
   'use strict';
 
   const U = window.KF.util;
-  const API = window.KF.api;
+  /* 离线通道：菜单是从网址里本地解出来的，点单也是本地打包成链接的 */
+  const SH = window.KF.share;
+  /* 在线通道（可选）。下厨的人那边配了收单服务的话，这里提交完就直接送到他手上，
+     不用再复制一条链接发过去。没配的时候这里所有调用都安静返回失败。 */
+  const NET = window.KF.net;
   /* 必须取别名再调用。脚本顺序是 ai.js → cook.js → guest.js，所以这时已经就绪；
      但直接用裸的 AI.xxx 会在打包顺序变化或压缩后变成未定义引用，
      而且这里少写一行，下面的教程按钮点击就会整个抛错、点不动。 */
   const AI = window.KF.ai;
 
   const KEY_NAME = 'kf_guest_name_v1';
-  const KEY_TOKEN = 'kf_guest_token_v1';
 
   function gs() { return window.KF.state.guest; }
-  function draftKey(code) { return 'kf_guest_draft_v1_' + code; }
-  function sentKey(code) { return 'kf_guest_sent_v1_' + code; }
-
-  function guestToken() {
-    let t = U.store.get(KEY_TOKEN, null);
-    if (!t) { t = U.randToken(24); U.store.set(KEY_TOKEN, t); }
-    return t;
-  }
+  /* 键用载荷的短指纹，不用载荷本身 —— 一份菜单的载荷有一千多字符，
+     拿来当键既难看、也会把 localStorage 的键撑得离谱。
+     前缀带 v2：旧版是按 6 位菜单码存的，别把两种数据混在一起。 */
+  function draftKey(id) { return 'kf_guest_draft_v2_' + id; }
+  function sentKey(id) { return 'kf_guest_sent_v2_' + id; }
 
   function reset(code) {
     window.KF.state.guest = {
       code: code || '',
+      /* 载荷的短指纹，用来当本机草稿和"已经生成过"的键 */
+      codeKey: '',
       menu: null,
+      /* 下厨的人的厨房编号，跟着菜单一起过来。没有它就只能走链接那条路
+         （旧链接、或者下厨的人那个站没配收单服务，都是这种情况）。 */
+      kid: '',
       loading: false,
-      error: code ? '' : '还没有菜单码。输入下厨的人给你的那 6 位。',
+      error: code ? '' : '还没有菜单。让下厨的人把他的二维码或链接发给你。',
       name: U.store.get(KEY_NAME, '') || '',
       message: '',
       picks: {},
@@ -43,6 +48,11 @@ window.KF = window.KF || {};
       _ownKind: 'dish',
       _ownDraft: {},
       sent: null,
+      /* 生成好的点单。生成和"发给下厨的人"是两步，中间要是切走再回来
+         （或者顺手刷新了一下），这三样还得在，不能让人白点一次生成。 */
+      sendPayload: '',
+      sendLink: '',
+      sendQr: '',
       submitting: false,
       loadedCode: '',
     };
@@ -50,34 +60,44 @@ window.KF = window.KF || {};
 
   async function load(code) {
     const s = gs();
-    code = String(code || '').trim().toUpperCase();
-    if (!code) { s.error = '缺少菜单码。'; return; }
-    if (s.loadedCode === code && s.menu) return;
+    const raw = String(code || '').trim();
+    if (!raw) { s.error = '没有拿到菜单内容。'; return; }
 
-    s.code = code;
+    const key = SH.sig(raw);
+    if (s.loadedCode === key && s.menu) return;
+
+    s.code = raw;
+    s.codeKey = key;
     s.loading = true;
     s.error = '';
     renderView();
 
     try {
-      const menu = await API.getMenu(code);
-      if (!menu) {
-        s.menu = null;
-        s.error = '没找到这个菜单码对应的菜单。确认一下有没有抄错，或者让下厨的人再报一次。';
-      } else {
-        s.menu = menu;
-        s.loadedCode = code;
+      /* 旧的 6 位菜单码是存在服务器上的，而站里已经没有服务器了。
+         这种情况要明确告诉人怎么办，不能让人对着"打不开"发呆。 */
+      if (raw.charAt(0) !== '~') {
+        throw new Error('这是一个旧版的 6 位菜单码，现在不用了 —— 让下厨的人把他的二维码或链接重新发给你。');
+      }
+      const menu = await SH.unpack(raw);
+      if (!menu || !Array.isArray(menu.dishes)) throw new Error('这份菜单里没有内容。');
+      s.menu = menu;
+      s.kid = (typeof menu.k === 'string' && /^[A-Za-z0-9_-]{8,40}$/.test(menu.k)) ? menu.k : '';
+      s.loadedCode = key;
 
-        /* 恢复本机草稿与上次提交 */
-        const d = U.store.get(draftKey(code), null);
-        if (d && typeof d === 'object') {
-          s.picks = d.picks || {};
-          s.takeoutPicks = (d.takeoutPicks && typeof d.takeoutPicks === 'object') ? d.takeoutPicks : {};
-          s.message = d.message || '';
-          s.wants = Array.isArray(d.wants) ? d.wants : [];
-          if (d.name) s.name = d.name;
-        }
-        s.sent = U.store.get(sentKey(code), null);
+      /* 恢复本机草稿与上次生成的那份点单 */
+      const d = U.store.get(draftKey(key), null);
+      if (d && typeof d === 'object') {
+        s.picks = d.picks || {};
+        s.takeoutPicks = (d.takeoutPicks && typeof d.takeoutPicks === 'object') ? d.takeoutPicks : {};
+        s.message = d.message || '';
+        s.wants = Array.isArray(d.wants) ? d.wants : [];
+        if (d.name) s.name = d.name;
+      }
+      s.sent = U.store.get(sentKey(key), null);
+      /* 上次生成过的话，那段内容和链接一并恢复出来 —— 不用为了"再发一次"重新点一遍 */
+      if (s.sent && s.sent.payload) {
+        s.sendPayload = s.sent.payload;
+        s.sendLink = SH.orderLink(s.sent.payload);
       }
     } catch (e) {
       s.menu = null;
@@ -95,8 +115,8 @@ window.KF = window.KF || {};
 
   function saveDraft() {
     const s = gs();
-    if (!s.code) return;
-    U.store.set(draftKey(s.code), {
+    if (!s.codeKey) return;
+    U.store.set(draftKey(s.codeKey), {
       picks: s.picks, takeoutPicks: s.takeoutPicks,
       message: s.message, name: s.name, wants: s.wants,
     });
@@ -125,11 +145,13 @@ window.KF = window.KF || {};
       host.innerHTML = '<div class="wrap wrap-narrow">' +
         '<h1>打不开这份菜单</h1>' +
         '<div class="card"><div class="note-bar err">' + U.esc(s.error) + '</div>' +
-        '<div class="field"><label>手动输入菜单码</label>' +
+        '<div class="field"><label>把下厨的人发来的链接粘到这里</label>' +
         '<div class="join-row" style="margin:0">' +
-        '<input type="text" id="join-code" maxlength="8" value="' + U.esc(s.code) + '" placeholder="6 位菜单码">' +
+        '<input type="text" id="join-code" placeholder="整条链接，或者分享来的那段内容">' +
         '<button class="btn btn-primary" id="btn-join">打开</button>' +
-        '</div></div>' +
+        '</div>' +
+        '<p class="hint">一整段话也行 —— 里面夹着链接我们也能认出来。</p>' +
+        '</div>' +
         '<div class="btn-row" style="margin-top:14px"><a class="btn" href="#/">回首页</a></div>' +
         '</div></div>';
       return;
@@ -163,9 +185,13 @@ window.KF = window.KF || {};
     }
 
     if (s.sent) {
-      h += '<div class="note-bar ok">你已经在 ' + U.esc(U.fmtTime(s.sent.at)) + ' 提交过这份菜单：' +
+      h += '<div class="note-bar' + (s.sent.viaServer ? ' ok' : '') + '">你在 ' +
+           U.esc(U.fmtTime(s.sent.at)) + ' 生成过这份点单：' +
            U.esc((s.sent.items || []).map(function (x) { return x.name; }).join('、')) +
-           '。下面改动后再提交一次，就直接改掉这一份。' +
+           '。' +
+           (s.sent.viaServer
+             ? '<b>已经发到下厨的人那里了。</b>'
+             : '改动之后再生成一次，就是新的一条。') +
            (s.sent.message ? '<br>你留的话：' + U.esc(s.sent.message) : '') +
            '</div>';
     }
@@ -195,7 +221,7 @@ window.KF = window.KF || {};
       h += '<div class="card" id="takeout-card" style="margin-top:18px">';
       h += U.takeoutHtml(takeouts, {
         head: (s.menu.cook_name || '下厨的人') + ' 说这顿也可以点这些',
-        sub: '不想吃家里做的话，直接勾上你要的 —— 提交的时候会一起告诉' +
+        sub: '不想吃家里做的话，直接勾上你要的 —— 生成点单的时候会一起告诉' +
              (s.menu.cook_name || '下厨的人') + '。',
         pickable: true,
         picked: s.takeoutPicks,
@@ -264,13 +290,13 @@ window.KF = window.KF || {};
     h += '<textarea data-field="guestMessage" rows="3" placeholder="如 想加个汤 / 少放辣 / 大概七点吃">' + U.esc(s.message) + '</textarea>';
     h += '</div>';
 
-    /* 提交条 */
+    /* 生成点单条 */
     h += '<div class="card">';
-    h += '<div class="card-head"><h2>提交</h2><div class="spacer"></div>' +
+    h += '<div class="card-head"><h2>生成点单</h2><div class="spacer"></div>' +
          '<span class="save-state" id="guest-save-state"></span></div>';
 
     if (!pickedCount) {
-      h += '<div class="note-bar warn">还没选菜。给想吃的菜点几颗星，或者自己加一条，再提交。</div>';
+      h += '<div class="note-bar warn">还没选菜。给想吃的菜点几颗星，或者自己加一条，再生成。</div>';
     } else {
       const nMenu = pickedCount - s.wants.length - tkPicked.length;
       const bits = [];
@@ -282,18 +308,57 @@ window.KF = window.KF || {};
 
     h += '<div class="btn-row">' +
          '<button class="btn btn-primary" id="btn-submit"' + (s.submitting || !pickedCount ? ' disabled' : '') + '>' +
-         (s.submitting ? '<span class="spinner"></span>正在提交…' : '提交给 ' + U.esc(s.menu.cook_name || '下厨的人')) + '</button>' +
+         (s.submitting ? '<span class="spinner"></span>正在生成…' : '生成点单给 ' + U.esc(s.menu.cook_name || '下厨的人')) + '</button>' +
          '<button class="btn" id="btn-save-draft">保存草稿</button>' +
          '<button class="btn btn-ghost" id="btn-clear-picks">清空我的选择</button>' +
          '</div>';
     h += '</div>';
+
+    /* 生成好的点单显眼地摆在这儿：复制走、发微信 —— 这是把点单送到
+       下厨的人手上的唯一一条路，所以它得是个大按钮，而不是一行小字。 */
+    if (s.sendPayload) {
+      /* 提交其实已经成功了，但"送没送到"是另一回事：
+         下厨的人那边配了收单服务，这一条在他开页面时就自己进去了；
+         没配（或者他手上是旧链接）就还得走手动那条路。
+         同一张卡按这个分两种长相 —— 自动送到的就不用再让人多做一个动作。 */
+      const via = !!(s.sent && s.sent.viaServer);
+      if (!s.sendQr) s.sendQr = SH.qrDataUrl(s.sendPayload, 560);
+
+      /* 手动那套（复制链接 / 复制文字 / 二维码）在两种形态下都要在，
+         只是自动送到的形态里它收进一个折叠里当备用。 */
+      let manual = '<div class="btn-row">' +
+           '<button class="btn btn-primary" id="btn-send-order">复制，发给下厨的人</button>' +
+           '<button class="btn" id="btn-send-text">复制成文字版</button>' +
+           '</div>';
+      if (s.sendQr) {
+        manual += '<details class="send-qr"><summary>或者：让他扫这个二维码</summary>' +
+             '<div class="qr-box qr-box-sm"><img src="' + s.sendQr + '" alt="点单二维码"></div>' +
+             '<p class="hint" style="text-align:center">面对面的时候最省事：他拿手机扫一下，点单就直接进他那边了。</p>' +
+             '</details>';
+      }
+
+      h += '<div class="card send-card' + (via ? ' send-card-ok' : '') + '">';
+      if (via) {
+        h += '<div class="card-head"><h2>已经发给下厨的人了</h2></div>';
+        h += '<p class="hint">他那边打开「收到的点单」就能看到你点的菜，这一步不用再做了。</p>';
+        h += '<details class="send-fallback"><summary>他没收到？再手动发一条</summary>' +
+             '<p class="hint" style="margin:10px 0 8px">把下面这段发给他，' +
+             '他粘进「收到的点单」里一样能收。</p>' + manual + '</details>';
+      } else {
+        h += '<div class="card-head"><h2>最后一步：发给下厨的人</h2></div>';
+        h += '<p class="hint">点下面的按钮把内容复制下来，用微信发给他。' +
+             '他打开就能看到你点的菜 —— 也不怕发不出去。</p>';
+        h += manual;
+      }
+      h += '</div>';
+    }
 
     h += '<div class="btn-row" style="margin-top:18px;justify-content:center"><a class="btn btn-ghost" href="#/">回首页</a></div>';
     h += '</div>';
 
     host.innerHTML = h;
     const st = document.getElementById('guest-save-state');
-    if (st && U.store.get(draftKey(s.code), null)) {
+    if (st && U.store.get(draftKey(s.codeKey), null)) {
       st.textContent = '草稿已存在这台设备上';
       st.className = 'save-state saved';
     }
@@ -406,12 +471,8 @@ window.KF = window.KF || {};
     const btn = e.target.closest('button');
     if (!btn) return;
 
-    /* 出门在外也能加：这两个按钮跟菜单码无关，先处理 */
-    if (btn.id === 'btn-join') {
-      const el = document.getElementById('join-code');
-      if (el) location.hash = '#/m/' + el.value.trim().toUpperCase();
-      return;
-    }
+    /* 这个按钮跟当前这份菜单无关（它是"打不开"那一屏里的入口），先处理 */
+    if (btn.id === 'btn-join') { goFromInput(); return; }
 
     if (window.KF.state.route.name !== 'guest' || !gs()) return;
 
@@ -434,6 +495,8 @@ window.KF = window.KF || {};
       return;
     }
     if (btn.id === 'btn-submit') { submit(); return; }
+    if (btn.id === 'btn-send-order') { sendOrder(btn); return; }
+    if (btn.id === 'btn-send-text') { sendOrderText(btn); return; }
     if (btn.dataset.act === 'open-tutorial') {
       /* 点菜端更要小心：这是别人（下厨的人）存进去的链接，
          而云端数据可能是很久以前存的，里面可能已经混进出事的站点。
@@ -601,7 +664,7 @@ window.KF = window.KF || {};
     const bar = document.getElementById('btn-submit');
     if (bar) {
       bar.disabled = !total || s.submitting;
-      bar.textContent = s.submitting ? '正在提交…' : '提交给 ' + (menu.cook_name || '下厨的人');
+      bar.textContent = s.submitting ? '正在生成…' : '生成点单给 ' + (menu.cook_name || '下厨的人');
     }
 
     const bars = document.querySelectorAll('.card .note-bar');
@@ -609,7 +672,7 @@ window.KF = window.KF || {};
       if (!/已选|还没选菜/.test(bars[i].textContent)) continue;
       bars[i].className = 'note-bar' + (total ? '' : ' warn');
       if (!total) {
-        bars[i].textContent = '还没选菜。给想吃的菜点几颗星，或者自己加一条，再提交。';
+        bars[i].textContent = '还没选菜。给想吃的菜点几颗星，或者自己加一条，再生成。';
         continue;
       }
       const bits = [];
@@ -623,8 +686,18 @@ window.KF = window.KF || {};
   function onKeydown(e) {
     if (e.target && e.target.id === 'join-code' && e.key === 'Enter') {
       e.preventDefault();
-      location.hash = '#/m/' + e.target.value.trim().toUpperCase();
+      goFromInput();
     }
+  }
+
+  /* 粘贴进来的可能是整条链接、一整段带话的消息，也可能只是旧的 6 位码。
+     统一交给 share 层去认。这里绝不能做 toUpperCase ——
+     载荷里的大小写是有意义的，转一次就把整份菜单毁了。 */
+  function goFromInput() {
+    const el = document.getElementById('join-code');
+    const code = SH.codeFrom(el ? el.value : '');
+    if (!code) { U.toast('先把下厨的人发来的那条内容粘进来', 'err'); return; }
+    location.hash = '#/m/' + code;
   }
 
   async function submit() {
@@ -683,33 +756,106 @@ window.KF = window.KF || {};
     renderView();
 
     try {
-      const res = await API.submitOrder({
-        code: s.code,
-        guestToken: guestToken(),
-        guestName: (s.name || '').trim() || '匿名',
-        items: items,
-        message: (s.message || '').trim(),
+      const me = (s.name || '').trim() || '匿名';
+      /* 只带下厨的人真的要看的字段。dish_id 是站内用的，
+         带上它每条要多十几个字符，而对面的界面根本不显示它。 */
+      const slim = items.map(function (it) {
+        return {
+          name: it.name,
+          stars: Number(it.stars) || 0,
+          kind: it.kind || '',
+          from: it.from || '',
+          where: it.where || '',
+          price: it.price || '',
+          note: it.note || '',
+        };
       });
 
+      const msg = (s.message || '').trim();
+      const at = new Date().toISOString();
+      const order = { v: 1, id: U.uid(), at: at, guest: me, items: slim, message: msg };
+
+      /* 先把链接那条路做出来 —— 不管发生什么它都要有。
+         后端那条路是"顺带"，不能让打包等它。 */
+      const payload = await SH.pack(order);
+
+      /* 再顺手交给后端。成不成都不影响下面：
+         成了下厨的人那边立刻就看到；不成他照样能点「复制」把这条发出去。 */
+      let posted = false;
+      if (s.kid) {
+        try { posted = await NET.postOrder(s.kid, order); }
+        catch (e) { posted = false; }
+      }
+
+      s.sendPayload = payload;
+      s.sendLink = SH.orderLink(payload);
+      s.sendQr = '';      /* 等渲染时再画，别让"生成"这一步在这儿卡一下 */
       s.sent = {
-        at: (res && res.created_at) || new Date().toISOString(),
-        /* 服务端告诉他这次是"新提交"还是"覆盖了自己之前那条"。
-           换台设备提交会是新的一条（guest_token 不一样），所以不能前端自己猜。 */
-        updated: !!(res && res.updated),
+        at: at,
+        payload: payload,
         items: items,
-        message: (s.message || '').trim(),
+        message: msg,
+        /* 记下来，刷新页面之后这张卡还说得出"已经发过去了" */
+        viaServer: posted,
       };
-      U.store.set(sentKey(s.code), s.sent);
+      U.store.set(sentKey(s.codeKey), s.sent);
       U.store.set(KEY_NAME, s.name || '');
 
       s.submitting = false;
       renderView();
-      U.toast((res && res.updated) ? '已经更新你那份点单' : '已经发给下厨的人了', 'ok');
+      U.toast(posted ? '已经发给下厨的人了' : '点单生成好了，点「复制，发给下厨的人」', 'ok');
+      /* 生成完把最后那一步滚进视野。少了这一下，很多人会以为已经发出去了 */
+      const card = document.querySelector('.send-card');
+      if (card) card.scrollIntoView({ block: 'center' });
     } catch (e) {
       s.submitting = false;
       renderView();
       U.toast(U.errText(e), 'err');
     }
+  }
+
+  /* ---------- 把点单发给下厨的人 ---------- */
+
+  /* 除了链接还给一段人能读的话：微信里并不是任何长链接都会被当成可点的链接，
+     把链接和这段话一起发过去最稳，对方照着念也知道收到的是什么。 */
+  function orderText() {
+    const s = gs();
+    if (!s.sendLink) return '';
+    const items = (s.sent && s.sent.items) || [];
+    const parts = items.map(function (it) {
+      if (it.kind === 'takeout') return it.name + (it.from ? '（' + it.from + '）' : '');
+      if (it.kind === 'wish') return it.name + '（菜单上没有的）';
+      const n = Number(it.stars) || 0;
+      return it.name + (n ? '（' + (U.starLabels[n] || '') + '）' : '');
+    });
+    return '【吃什么·点单】' + ((s.name || '').trim() || '匿名') + ' 点好了：' +
+      parts.join('、') + '。' +
+      ((s.sent && s.sent.message) ? '留言：' + s.sent.message + '。' : '') +
+      '打开就能看到：';
+  }
+
+  function copySend(text, okMsg, failTitle, btn) {
+    const label = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '正在复制…'; }
+    U.copyText(text).then(function () {
+      U.toast(okMsg, 'ok');
+    }, function () {
+      U.manualCopy(text, failTitle);
+    }).then(function () {
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+    });
+  }
+
+  function sendOrder(btn) {
+    const s = gs();
+    if (!s.sendLink) { U.toast('先点「生成点单」', 'err'); return; }
+    copySend(s.sendLink, '已复制。粘到微信里发给下厨的人就行', '复制点单链接', btn);
+  }
+
+  function sendOrderText(btn) {
+    const s = gs();
+    if (!s.sendLink) { U.toast('先点「生成点单」', 'err'); return; }
+    copySend(orderText() + s.sendLink, '已复制，粘到微信里发出去就行', '复制点单文字版', btn);
   }
 
   window.KF.guest = {

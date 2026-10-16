@@ -8,6 +8,7 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
   'use strict';
 
   const U = window.KF.util;
+  const SH = window.KF.share;
 
   const KEY_TOKEN = 'kf_cook_token_v1';
   const KEY_DRAFT = 'kf_cook_draft_v1';
@@ -17,8 +18,14 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
     if (!raw || raw === '/' || raw === '') return { name: 'home', code: '' };
     if (raw === '/cook') return { name: 'cook', code: '' };
     if (raw === '/guest') return { name: 'guest', code: '' };
-    const m = raw.match(/^\/m\/([A-Za-z0-9]{1,12})$/);
-    if (m) return { name: 'guest', code: m[1].toUpperCase() };
+    /* 菜单载荷：~ 开头的 base64url，可能一千多字符，所以这里不能限长度。
+       旧的 6 位菜单码也走这条 —— 由点菜端给出"现在不用了"的说明。
+       千万不能 toUpperCase：载荷里的大小写是有意义的。 */
+    const m = raw.match(/^\/m\/(.+)$/);
+    if (m) return { name: 'guest', code: m[1] };
+    /* 家人发来的点单链接：打开这条链接就是把那条点单收下来 */
+    const o = raw.match(/^\/o\/(.+)$/);
+    if (o) return { name: 'receive', payload: o[1] };
     return { name: 'home', code: '' };
   }
 
@@ -41,6 +48,7 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
 
     if (r.name === 'cook') { renderCook(); return; }
     if (r.name === 'guest') { renderGuest(r.code); return; }
+    if (r.name === 'receive') { renderReceive(r.payload); return; }
     renderHome();
   }
 
@@ -73,22 +81,23 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
          '<p>' + (saved
             ? '你已经存了 ' + (saved.ingredients || []).length + ' 样食材、' +
               (saved.dishes || []).length + ' 道菜，接着改。'
-            : '填食材、让 AI 推荐、挑菜、生成菜单码。') + '</p>' +
+            : '填食材、让 AI 推荐、挑菜、生成分享二维码。') + '</p>' +
          '<div class="go">' + (saved ? '接着弄 →' : '开始选菜 →') + '</div>' +
          '</button>';
 
     h += '<button class="role-card" id="go-guest">' +
          '<div class="em">🍽</div>' +
          '<h3>我来点菜</h3>' +
-         '<p>拿到下厨的人发来的那 6 位菜单码，进来挑想吃的、给想吃的程度打个星，提交给他。</p>' +
+         '<p>扫一下（或点开）他发来的二维码／链接，就能看到他排的菜单。挑想吃的、给想吃的程度打个星，再把点单发回给他。</p>' +
          '<div class="go">去看菜单 →</div>' +
          '</button>';
     h += '</div>';
 
     h += '<div class="card" style="margin-top:20px;text-align:center">' +
-         '<h3 style="font-size:15px">手上有菜单码？</h3>' +
+         '<h3 style="font-size:15px">手上已经有菜单了？</h3>' +
+         '<p class="hint">把下厨的人发来的那条内容粘进来就能打开 —— 是链接、还是夹在话里的都行。</p>' +
          '<div class="join-row">' +
-           '<input type="text" id="join-code" maxlength="8" placeholder="6 位菜单码">' +
+           '<input type="text" id="join-code" placeholder="粘贴链接，或他发来的那段内容">' +
            '<button class="btn btn-primary" id="btn-join">打开菜单</button>' +
          '</div>' +
          '</div>';
@@ -108,8 +117,10 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
 
   function joinFromHome() {
     const el = document.getElementById('join-code');
-    const code = el ? el.value.trim().toUpperCase() : '';
-    if (!code) { U.toast('请先输入菜单码', 'err'); return; }
+    /* 粘进来的可能是整条链接、一整段话，也可能只是旧码 —— 交给 share 层去认。
+       这里绝不能 toUpperCase，那会把载荷里的大小写弄坏。 */
+    const code = SH.codeFrom(el ? el.value : '');
+    if (!code) { U.toast('先把下厨的人发来的那条内容粘进来', 'err'); return; }
     location.hash = '#/m/' + code;
   }
 
@@ -143,6 +154,27 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
     else window.KF.guest.render(host);
   }
 
+  /* ---------- 收到点单 ---------- */
+
+  /* 家人发来的那条链接长这样：#/o/~1xxxx…
+     打开它不该是"看一个页面"，而应该是"把这条点单收进下厨工作台"。
+     所以：先把状态建起来、把它收下，然后立刻把地址换回 #/cook ——
+     那条长网址要是留在地址栏里，随手一刷新就会又收一条。 */
+  async function renderReceive(payload) {
+    const host = mount('wrap');
+    host.innerHTML = '<div class="card">' +
+      '<div class="skeleton" style="width:45%;height:20px"></div>' +
+      '<p class="small muted" style="margin:14px 0 0">正在读取这条点单…</p></div>';
+
+    try {
+      await window.KF.cook.init();
+      await window.KF.cook.receive(payload, false);
+    } catch (e) {
+      U.toast('读取这条点单失败：' + U.errText(e), 'err');
+    }
+    location.replace(location.pathname + location.search + '#/cook');
+  }
+
   /* ---------- 启动 ---------- */
 
   function boot() {
@@ -164,9 +196,12 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
     });
 
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden && window.KF.state.route.name === 'cook' && window.KF.cook) {
-        window.KF.cook.refreshShareBar();
-      }
+      if (document.hidden) return;
+      if (window.KF.state.route.name !== 'cook' || !window.KF.cook) return;
+      window.KF.cook.refreshShareBar();
+      /* 轮询在页面切到后台时会跳过（省流量也省电），所以切回来的这一刻
+         要立刻补问一次 —— 不然人切回来还得再等一个周期才看到新点单。 */
+      window.KF.cook.wake();
     });
 
     window.addEventListener('beforeunload', function () {

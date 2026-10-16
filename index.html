@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-build="20261016e">
+<html lang="zh-CN" data-build="20261016g">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,7 +12,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<link rel="stylesheet" href="assets/style.css?v=20261016e">
+<link rel="stylesheet" href="assets/style.css?v=20261016g">
 
 <!-- 手机主屏入口。为什么要这一套，而不是只发 apk：
      国内安卓手机从 2024 年起对未备案的安装包做拦截（华为管这个叫"应用核准"），
@@ -35,7 +35,7 @@
      网址一变浏览器就不会再用缓存，用户不需要手动强刷，点菜的人也一样。 -->
 <script>
 (function () {
-  var BUILD = '20261016e';
+  var BUILD = '20261016g';
   window.__KF_BUILD = BUILD;
 
   function check() {
@@ -86,19 +86,30 @@
   <div class="wrap"><div class="card"><div class="note-bar err">这个页面需要开启 JavaScript 才能使用。</div></div></div>
 </noscript>
 
-<!-- 云服务 SDK 自己托管。
-     以前这里引用的是 cdn.jsdelivr.net —— 那台服务器在境外，国内网络下经常
-     连不上或要等十几秒。SDK 一加载不出来，页面就是白屏（云端读写全废），
-     表现就是「链接打不开」。现在把这份 60KB 的 SDK 放在自己的域名下，
-     跟其它静态资源一样快，不再依赖任何境外服务。 -->
-<script src="assets/vendor/wbcloud.js?v=20261016e"></script>
-<script src="assets/config.js?v=20261016e"></script>
-<script src="assets/ui.js?v=20261016e"></script>
-<script src="assets/cloud.js?v=20261016e"></script>
-<script src="assets/ai.js?v=20261016e"></script>
-<script src="assets/cook.js?v=20261016e"></script>
-<script src="assets/guest.js?v=20261016e"></script>
-<script src="assets/app.js?v=20261016e"></script>
+<!-- 脚本加载顺序有讲究：share.js / net.js 必须排在 cook.js / guest.js / app.js
+     之前 —— 后三个在文件一加载就取 window.KF.share、window.KF.net 的别名，
+     来晚了拿到的是 undefined，而且不会报错，只会「点了没反应」。
+
+     这个站以前靠 WorkBuddy 的云服务转发菜单和点单，而它只认自己那个域名：
+     网站一被放到别的域名上（比如现在这个 Cloudflare 地址），请求就被 403 拒掉，
+     点菜端整片报错。那套已经整个摘掉了。
+
+     现在有两条路，都在本站内部：
+       · assets/share.js —— 离线通道：菜单和点单压进链接 / 二维码，不经过服务器，
+         永远可用；
+       · assets/net.js   —— 在线通道（可选）：本站自带的 _worker.js 收单，
+         家人提交后下厨的人那边自动就收到。没配后端时这条自动失效，
+         页面安静地退回离线通道，不报错、不白屏。
+
+     所以除了版本自检和（配了后端时的）收单请求，这个页面不向外部地址发请求。 -->
+<script src="assets/ui.js?v=20261016g"></script>
+<script src="assets/vendor/qrcode.js?v=20261016g"></script>
+<script src="assets/share.js?v=20261016g"></script>
+<script src="assets/net.js?v=20261016g"></script>
+<script src="assets/ai.js?v=20261016g"></script>
+<script src="assets/cook.js?v=20261016g"></script>
+<script src="assets/guest.js?v=20261016g"></script>
+<script src="assets/app.js?v=20261016g"></script>
 
 </body>
 </html>
