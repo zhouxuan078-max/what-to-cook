@@ -1,0 +1,729 @@
+/* ==========================================================================
+   吃什么 — 样式
+   暖色调浅色主题，食材/菜单/点单三块内容为主
+   ========================================================================== */
+
+:root {
+  --bg: #faf7f1;
+  --bg-soft: #f3ede2;
+  --surface: #fffdfa;
+  --surface-2: #fbf7f0;
+  --ink: #241f19;
+  --ink-2: #4a4238;
+  --muted: #8b8175;
+  --line: #e7dfd2;
+  --line-2: #d5c9b6;
+  --primary: #c2552c;
+  --primary-dark: #a3441f;
+  --primary-soft: #fbeae1;
+  --herb: #3f6b4f;
+  --herb-soft: #e6efe8;
+  --amber: #9c6b0c;
+  --amber-soft: #fdf1d8;
+  --danger: #b23a2e;
+  --danger-soft: #fbe6e3;
+  --star: #e69b23;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(36, 31, 25, .05), 0 10px 28px -16px rgba(36, 31, 25, .22);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--herb); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- 布局 ---------- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  /* 去掉 backdrop-filter：sticky + 毛玻璃在长列表滚动时要反复重算模糊，
+     是滚动和点击都发滞的常见原因。改成不透明底色，观感几乎一样。 */
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-inner {
+  max-width: 1080px; margin: 0 auto; padding: 12px 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.brand { display: flex; align-items: baseline; gap: 9px; margin-right: auto; }
+.brand b { font-size: 17px; letter-spacing: .3px; }
+.brand span { font-size: 12px; color: var(--muted); }
+.ver { margin-left: 7px; font-size: 11px; color: var(--line-2); letter-spacing: .4px; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 26px 20px 80px; }
+.wrap-narrow { max-width: 760px; }
+
+/* ---------- 通用件 ---------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.card + .card { margin-top: 18px; }
+
+.card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.card-head h2 { margin: 0; font-size: 16px; font-weight: 650; }
+.card-head .spacer { margin-left: auto; }
+
+h1 { font-size: 25px; margin: 0 0 6px; letter-spacing: .2px; }
+h3 { font-size: 14px; margin: 0 0 8px; font-weight: 650; }
+
+.lede { color: var(--muted); margin: 0 0 22px; }
+
+hr.sep { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+
+/* ---------- 按钮 ---------- */
+
+.btn {
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  border-radius: var(--radius-sm);
+  padding: 8px 15px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: .14s ease;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg-soft); border-color: var(--line-2); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+
+.btn-herb { background: var(--herb); border-color: var(--herb); color: #fff; }
+.btn-herb:hover { filter: brightness(1.08); }
+
+.btn-ghost { background: transparent; border-color: transparent; color: var(--muted); padding: 6px 9px; }
+.btn-ghost:hover { background: var(--bg-soft); color: var(--ink); }
+
+.btn-sm { padding: 5px 11px; font-size: 13px; }
+.btn-danger { color: var(--danger); border-color: transparent; background: transparent; }
+.btn-danger:hover { background: var(--danger-soft); }
+
+.btn-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+
+/* ---------- 表单 ---------- */
+
+.field { margin-bottom: 14px; }
+.field > label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 5px; }
+.field .hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+/* 独立的说明块（不挂在 .field 里的那些）。
+   以前只有 `.field .hint` 有样式，于是全站二十多处 <div class="hint">
+   一直是**没有样式**的 —— 全按正文渲染：16px、深色、一行顶满，
+   看着像正文段落而不是附注。"用哪个 AI"那张卡整段都是解释文字，
+   不加这条就等于把最重要的那段话放大成正文。 */
+.hint {
+  font-size: 12.5px; color: var(--muted);
+  line-height: 1.62; margin: 0;
+}
+.hint b { color: var(--ink-2); font-weight: 650; }
+
+input[type=text], input[type=number], textarea, select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  outline: none;
+  transition: .14s ease;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+textarea { resize: vertical; min-height: 74px; line-height: 1.6; }
+
+.row { display: flex; gap: 10px; align-items: flex-end; }
+.row > * { min-width: 0; }
+.row .grow { flex: 1; }
+.row .fixed-140 { width: 140px; flex: none; }
+.row .fixed-100 { width: 100px; flex: none; }
+
+/* ---------- 标签页 ---------- */
+
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.tab:hover { background: var(--bg-soft); color: var(--ink-2); }
+.tab.active { background: var(--ink); color: #fff; }
+.tab .dot {
+  display: inline-block; min-width: 17px; height: 17px; line-height: 17px;
+  background: var(--primary); color: #fff; border-radius: 999px;
+  font-size: 11px; text-align: center; padding: 0 5px; margin-left: 6px;
+  vertical-align: 1px;
+}
+
+/* ---------- 徽标 / 芯片 ---------- */
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 999px; padding: 3px 10px;
+  font-size: 12px; background: var(--bg-soft); color: var(--ink-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.chip-ok { background: var(--herb-soft); color: var(--herb); border-color: #c9dccf; }
+.chip-miss { background: var(--amber-soft); color: var(--amber); border-color: #f0dcb2; }
+.chip-primary { background: var(--primary-soft); color: var(--primary); border-color: #f2d2c4; }
+
+.pill-group { display: flex; flex-wrap: wrap; gap: 7px; }
+.pill {
+  border: 1px solid var(--line-2); background: var(--surface);
+  border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--ink-2);
+}
+.pill:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.pill.on, .pill[aria-pressed="true"] {
+  border-color: var(--primary); color: var(--primary);
+  background: var(--primary-soft); font-weight: 600;
+}
+
+/* ---------- 用哪个 AI（现在只有一档，只读展示） ----------
+
+   原来是两张并排的卡，因为两档的差别不在一个词上 ——
+   "约 10 秒"和"约 1 分半"得并排放在一起看，用户才知道自己拿什么换什么。
+   快速版（按量计费、花搭建人的额度）下架之后只剩零额度这一档，
+   并排就不成立了，所以改成单列的一格只读展示。
+
+   `.static` 是给"看着像按钮、其实点不了"兜底的：眼下它跟 .on 的样式
+   完全一样（所以 hover 也看不出来），但只要以后有人改了 .model-opt:hover，
+   那一格就会开始闪 —— 加上这条就不会。 */
+
+.model-pick {
+  display: grid; grid-template-columns: 1fr; gap: 10px;
+}
+
+.model-opt {
+  display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  text-align: left; padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+  transition: border-color .15s, background .15s;
+}
+.model-opt:hover { border-color: var(--primary); background: var(--primary-soft); }
+.model-opt.on {
+  border-color: var(--primary); background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.model-opt.static { cursor: default; }
+.model-opt.static:hover {
+  border-color: var(--primary); background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.model-opt-top { display: flex; align-items: center; gap: 8px; }
+.model-opt-name { font-size: 14.5px; font-weight: 650; color: var(--ink); }
+.model-opt.on .model-opt-name { color: var(--primary-dark); }
+
+.model-badge {
+  font-size: 10.5px; font-weight: 650; letter-spacing: .5px;
+  padding: 1px 7px; border-radius: 999px;
+  background: var(--bg-soft); color: var(--muted); border: 1px solid var(--line);
+}
+.model-badge.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.model-opt-wait { font-size: 12.5px; color: var(--ink-2); }
+.model-opt.on .model-opt-wait { color: var(--primary-dark); }
+.model-opt-note { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+.muted-sm { font-size: 12px; color: var(--muted); }
+
+/* ---------- 食材 ---------- */
+
+.ing-group { margin-bottom: 16px; }
+.ing-group-title {
+  font-size: 12px; font-weight: 650; color: var(--muted);
+  letter-spacing: .6px; margin-bottom: 8px; text-transform: none;
+}
+.ing-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.ing {
+  display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--line); background: var(--surface-2);
+  border-radius: 999px; padding: 5px 6px 5px 13px; font-size: 13.5px;
+}
+.ing button {
+  border: 0; background: transparent; color: var(--muted);
+  width: 20px; height: 20px; border-radius: 999px; line-height: 1;
+  font-size: 15px; padding: 0;
+}
+.ing button:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* ---------- 菜品卡片 ---------- */
+
+.dish-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 17px;
+  background: var(--surface);
+  transition: .14s ease;
+}
+.dish-card + .dish-card { margin-top: 12px; }
+.dish-card:hover { border-color: var(--line-2); }
+.dish-card.is-picked { border-color: var(--herb); background: #fcfefc; }
+
+.dish-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dish-name { font-size: 16.5px; font-weight: 650; margin: 0; }
+.dish-meta { display: flex; gap: 7px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+
+.dish-reason {
+  font-size: 13px; color: var(--muted); margin: 9px 0 0;
+  padding-left: 11px; border-left: 2px solid var(--line);
+}
+
+.mat-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+.mat {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12.5px; padding: 3px 9px; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2);
+}
+.mat-type { color: var(--muted); font-size: 11px; }
+.mat-amount { color: var(--muted); }
+.mat.have { background: var(--herb-soft); border-color: #cfe0d4; color: var(--herb); }
+.mat.have .mat-type, .mat.have .mat-amount { color: #6d937b; }
+.mat.miss { background: var(--amber-soft); border-color: #f2ddb4; color: var(--amber); }
+.mat.miss .mat-type, .mat.miss .mat-amount { color: #b98f36; }
+
+details.steps { margin-top: 11px; }
+details.steps summary {
+  cursor: pointer; font-size: 13px; color: var(--muted);
+  list-style: none; user-select: none;
+}
+details.steps summary::-webkit-details-marker { display: none; }
+details.steps summary::before { content: "▸ "; }
+details.steps[open] summary::before { content: "▾ "; }
+details.steps ol { margin: 9px 0 0; padding-left: 20px; font-size: 13.5px; color: var(--ink-2); }
+details.steps li { margin-bottom: 5px; }
+
+.tips {
+  font-size: 13px; color: var(--ink-2); background: var(--herb-soft);
+  border-radius: var(--radius-sm); padding: 8px 11px; margin-top: 10px;
+}
+
+.dish-actions { display: flex; gap: 8px; margin-top: 13px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- 参考图 ---------- */
+
+.dish-photo {
+  margin: 12px 0 0; padding: 0; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.dish-photo img {
+  display: block; width: 100%; height: 200px; object-fit: cover;
+}
+.dish-photo figcaption {
+  font-size: 12px; color: var(--muted); padding: 7px 11px;
+  border-top: 1px solid var(--line);
+}
+/* 图挂了（链接失效、对方禁止外链）就不要留一个破图标在那里 */
+.dish-photo.is-broken { display: none; }
+
+/* 没贴图、但有挑定的教程：不硬造一张图，标清楚参考来源就够了 */
+.dish-photo-tut {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+  padding: 11px 14px; border-style: dashed;
+}
+.ph-site { font-size: 13.5px; font-weight: 650; color: var(--ink-2); }
+.ph-note { font-size: 12px; color: var(--muted); }
+
+.btn-tut.is-picked {
+  border-color: var(--herb); background: var(--herb-soft); color: var(--herb);
+}
+.btn-tut.is-picked i { color: #6d937b; }
+.tut-picked { font-size: 12px; color: var(--herb); margin-top: 7px; }
+
+/* 用户自己填的来源：虚线框，跟"我们建议的"那几个站分开。
+   这是他自己给的地址，打开前让他知道我们没验过。 */
+.btn-tut.is-own {
+  border-style: dashed; border-color: var(--line-2); color: var(--ink-2);
+}
+.btn-tut.is-own:hover { border-color: var(--primary); color: var(--primary); }
+.btn-tut.is-own.is-picked { border-color: var(--herb); background: var(--herb-soft); color: var(--herb); }
+
+/* ---------- 菜品特性（热量 / 营养 / 注意） ---------- */
+
+.facts {
+  margin-top: 12px; padding: 12px 14px;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.facts-head {
+  font-size: 12px; font-weight: 650; color: var(--muted);
+  letter-spacing: .4px; margin-bottom: 9px;
+}
+.fact-row { display: flex; gap: 10px; font-size: 13px; margin-bottom: 6px; align-items: baseline; }
+.fact-row:last-of-type { margin-bottom: 0; }
+.fact-k {
+  flex: 0 0 34px; color: var(--muted); font-size: 12px;
+}
+/* 这几项现在会长到两三行（热量要带每 100 克的数、注意要说清谁该少吃），
+   所以行高和换行都要放开，别让长句子挤成一坨。 */
+.fact-v { flex: 1; color: var(--ink-2); line-height: 1.6; word-break: break-word; }
+.fact-row.is-warn .fact-k { color: var(--amber); }
+.fact-row.is-warn .fact-v {
+  color: var(--ink-2);
+  border-left: 2px solid var(--amber-soft); padding-left: 9px; margin-left: -11px;
+}
+.facts-note {
+  font-size: 11.5px; color: var(--muted); margin-top: 9px;
+  padding-top: 8px; border-top: 1px dashed var(--line-2); line-height: 1.5;
+}
+
+/* ---------- 编辑里的照片选择 ---------- */
+
+.photo-picker {
+  display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap;
+}
+.photo-preview {
+  width: 140px; height: 105px; flex: 0 0 140px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface-2); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.photo-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-empty { font-size: 12px; color: var(--muted); }
+.photo-acts { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 8px; }
+.photo-acts .btn { align-self: flex-start; }
+.photo-or {
+  font-size: 12px; color: var(--muted); display: block;
+}
+.photo-or input { margin-top: 5px; }
+
+/* ---------- 点菜端：添加自己想吃的 ---------- */
+
+.add-own {
+  border: 1px dashed var(--line-2); border-radius: var(--radius);
+  padding: 15px 17px; background: var(--surface-2); margin-top: 18px;
+}
+.add-own-head h2 { margin: 0 0 4px; font-size: 16px; font-weight: 650; }
+.add-own-sub { margin: 0 0 13px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+.own-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.own-tab {
+  flex: 1 1 0; padding: 7px 10px; font-size: 13px; font-weight: 550;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: var(--surface); color: var(--ink-2); cursor: pointer;
+}
+.own-tab.is-on { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+.own-pane { display: block; }
+.own-pane[hidden] { display: none; }
+.own-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.own-row input { flex: 1 1 140px; min-width: 0; }
+.own-pane textarea { width: 100%; margin-bottom: 8px; }
+.own-acts { display: flex; gap: 8px; margin-top: 2px; }
+
+.own-list { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.own-list-head { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.own-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--surface); margin-bottom: 7px;
+}
+.own-item-main { flex: 1 1 auto; min-width: 0; line-height: 1.7; font-size: 13.5px; }
+.own-item-name { font-weight: 600; }
+.own-item-from { color: var(--ink-2); margin-left: 6px; }
+.own-item-price { color: var(--muted); margin-left: 6px; font-size: 12.5px; }
+.own-item-note { display: block; color: var(--muted); font-size: 12.5px; }
+.own-item-where { display: block; color: var(--ink-2); font-size: 12.5px; }
+
+.own-tag, .takeout-tag {
+  display: inline-block; font-size: 11px; padding: 1px 6px;
+  border-radius: 5px; margin-right: 6px; vertical-align: 1px;
+}
+.own-tag { background: var(--amber-soft); color: var(--amber); }
+.takeout-tag { background: var(--primary-soft); color: var(--primary); }
+
+/* ---------- 外卖 / 店里选项 ---------- */
+
+/* 下厨端：列自己摆的选项 */
+.takeout-list { margin-top: 12px; }
+.takeout-item {
+  display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--surface); margin-bottom: 8px;
+}
+/* 不打勾＝不给点菜的人看。整条压暗，一眼能分出来 */
+.takeout-item.is-off { opacity: .55; background: var(--bg-soft); }
+.takeout-pick {
+  display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  font-size: 12.5px; color: var(--muted); cursor: pointer; white-space: nowrap;
+}
+.takeout-pick input { width: auto; margin: 0; }
+.takeout-main { flex: 1 1 200px; min-width: 0; line-height: 1.75; font-size: 13.5px; }
+.takeout-name { font-weight: 600; }
+.takeout-from { color: var(--ink-2); margin-left: 6px; }
+.takeout-price { color: var(--muted); margin-left: 6px; font-size: 12.5px; }
+.takeout-where { display: block; color: var(--ink-2); font-size: 12.5px; }
+.takeout-note { display: block; color: var(--muted); font-size: 12.5px; }
+.takeout-acts { display: flex; gap: 6px; flex: 0 0 auto; margin-left: auto; }
+.takeout-preview-label {
+  font-size: 12.5px; color: var(--muted);
+  margin: 16px 0 8px; padding-top: 12px; border-top: 1px dashed var(--line);
+}
+
+/* 两端共用的这一块 */
+.takeout-box {
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface-2); padding: 13px 15px;
+}
+.takeout-box-head { font-size: 14px; font-weight: 650; margin-bottom: 4px; }
+.takeout-box-sub { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.takeout-line {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 8px 0; border-top: 1px dashed var(--line); cursor: pointer;
+}
+.takeout-line:first-of-type { border-top: 0; }
+.takeout-line input[type="checkbox"] { width: auto; margin: 4px 0 0; flex: 0 0 auto; }
+.takeout-dot {
+  flex: 0 0 6px; width: 6px; height: 6px; margin-top: 8px;
+  border-radius: 50%; background: var(--primary);
+}
+.takeout-line-main { flex: 1 1 auto; min-width: 0; line-height: 1.7; font-size: 13.5px; }
+.takeout-line-name { font-weight: 600; }
+.takeout-line-shop { color: var(--ink-2); margin-left: 6px; }
+.takeout-line-price { color: var(--muted); margin-left: 6px; font-size: 12.5px; }
+.takeout-line-where { display: block; color: var(--ink-2); font-size: 12.5px; }
+.takeout-line-note { display: block; color: var(--muted); font-size: 12.5px; }
+
+/* ---------- 「换换口味」那一半 ---------- */
+
+.ex-head {
+  font-size: 13px; color: var(--ink-2);
+  margin: 16px 0 10px; padding-top: 13px; border-top: 1px dashed var(--line);
+}
+/* 跟上半「正经推荐」在视觉上有点区分：左边一道暖色竖线 */
+.ex-card { border-left: 3px solid var(--primary); }
+
+.pick-line .own-tag, .pick-line .takeout-tag { margin-left: 6px; margin-right: 0; }
+.order .own-tag, .order .takeout-tag { margin-left: 6px; margin-right: 0; }
+.pick-line .pick-from { color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+.pick-line .pick-note { display: block; color: var(--muted); font-size: 12.5px; }
+.pick-line.no-star .st { display: none; }
+
+/* ---------- 教程入口 ---------- */
+
+.tut-block { margin-top: 12px; padding-top: 11px; border-top: 1px dashed var(--line); }
+.tut-label { font-size: 12px; color: var(--muted); margin-bottom: 7px; }
+.tut-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-tut { font-size: 12.5px; padding: 4px 10px; color: var(--ink-2); }
+.btn-tut:hover { border-color: var(--primary); color: var(--primary); }
+.btn-tut i { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 4px; }
+.btn-tut:hover i { color: var(--primary); }
+
+/* ---------- 星级 ---------- */
+
+.stars { display: inline-flex; align-items: center; gap: 9px; }
+.star-row { display: inline-flex; gap: 2px; }
+.star {
+  border: 0; background: transparent; padding: 0 1px;
+  font-size: 22px; line-height: 1; color: #ded4c3;
+  transition: .12s ease;
+}
+.star.on { color: var(--star); }
+.star:hover { transform: scale(1.12); }
+.star-label { font-size: 12.5px; color: var(--muted); min-width: 62px; }
+.stars.readonly .star { cursor: default; font-size: 17px; }
+.stars.readonly .star:hover { transform: none; }
+
+/* ---------- 空状态 ---------- */
+
+.empty {
+  text-align: center; padding: 44px 20px; color: var(--muted);
+}
+.empty .big { font-size: 34px; margin-bottom: 10px; }
+.empty p { margin: 0; font-size: 14px; }
+
+/* ---------- 提示条 ---------- */
+
+.note-bar {
+  border-radius: var(--radius-sm); padding: 11px 14px; font-size: 13.5px;
+  background: var(--bg-soft); color: var(--ink-2); margin-bottom: 16px;
+  border: 1px solid var(--line);
+}
+.note-bar.warn { background: var(--amber-soft); color: var(--amber); border-color: #f0dcb2; }
+.note-bar.ok { background: var(--herb-soft); color: var(--herb); border-color: #c9dccf; }
+.note-bar.err { background: var(--danger-soft); color: var(--danger); border-color: #f0cdc8; }
+
+/* ---------- 分享条 ---------- */
+
+.share-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--ink); color: #fff; border-radius: var(--radius);
+  padding: 15px 18px; margin-bottom: 20px;
+}
+.share-bar .lbl { font-size: 12px; opacity: .66; }
+.share-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 21px; font-weight: 700; letter-spacing: 3px;
+}
+.share-bar .spacer { margin-left: auto; }
+.share-bar .btn {
+  background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .22); color: #fff;
+}
+.share-bar .btn:hover { background: rgba(255, 255, 255, .22); }
+
+/* ---------- 订单 ---------- */
+
+.order {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 15px 17px; background: var(--surface);
+}
+.order + .order { margin-top: 11px; }
+.order.unseen { border-color: var(--primary); background: #fffaf7; }
+.order-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.order-head .who { font-weight: 650; font-size: 15px; }
+.order-head .when { font-size: 12px; color: var(--muted); }
+.order-head .badge {
+  font-size: 11px; background: var(--primary); color: #fff;
+  border-radius: 999px; padding: 1px 8px;
+}
+.pick-line {
+  display: flex; align-items: center; gap: 10px; padding: 5px 0;
+  font-size: 14px; border-bottom: 1px dashed var(--line);
+}
+.pick-line:last-child { border-bottom: 0; }
+.pick-line .st { margin-left: auto; }
+.order-msg {
+  font-size: 13.5px; color: var(--ink-2); background: var(--bg-soft);
+  border-radius: var(--radius-sm); padding: 8px 11px; margin-top: 9px;
+}
+
+/* ---------- 首页 ---------- */
+
+.home-hero { text-align: center; padding: 34px 0 26px; }
+.home-hero h1 { font-size: 31px; }
+.home-hero p { color: var(--muted); margin: 8px auto 0; max-width: 520px; }
+
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+@media (max-width: 700px) { .role-grid { grid-template-columns: 1fr; } }
+
+.role-card {
+  text-align: left; border: 1px solid var(--line); background: var(--surface);
+  border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
+  transition: .16s ease;
+}
+.role-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.role-card .em { font-size: 27px; }
+.role-card h3 { font-size: 17px; margin: 10px 0 6px; }
+.role-card p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.role-card .go { margin-top: 14px; font-size: 13.5px; color: var(--primary); font-weight: 600; }
+
+.join-row { display: flex; gap: 10px; max-width: 340px; margin: 22px auto 0; }
+.join-row input { text-align: center; letter-spacing: 3px; text-transform: uppercase; font-weight: 600; }
+
+/* ---------- 弹窗 ---------- */
+
+.modal-mask {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(36, 31, 25, .42);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 16px; overflow-y: auto;
+}
+.modal {
+  background: var(--surface); border-radius: var(--radius);
+  width: 100%; max-width: 620px; padding: 22px;
+  box-shadow: 0 30px 70px -20px rgba(36, 31, 25, .5);
+}
+.modal h3 { font-size: 17px; margin: 0 0 16px; }
+.modal-foot { display: flex; gap: 9px; justify-content: flex-end; margin-top: 20px; }
+
+.mat-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.mat-row input { flex: 1; }
+.mat-row select { width: 88px; flex: none; }
+.mat-row .qty { width: 92px; flex: none; }
+.mat-row button {
+  flex: none; width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+}
+.mat-row button:hover { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+
+/* ---------- Toast ---------- */
+
+.toasts {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+  z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none;
+}
+.toast {
+  background: var(--ink); color: #fff; border-radius: 999px;
+  padding: 9px 19px; font-size: 13.5px; box-shadow: var(--shadow);
+  animation: toast-in .2s ease;
+  max-width: 88vw;
+}
+.toast.ok { background: var(--herb); }
+.toast.err { background: var(--danger); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- 加载 ---------- */
+
+.spinner {
+  display: inline-block; width: 13px; height: 13px;
+  border: 2px solid rgba(255, 255, 255, .38); border-top-color: #fff;
+  border-radius: 999px; animation: spin .7s linear infinite;
+  vertical-align: -2px; margin-right: 7px;
+}
+.spinner.dark { border-color: var(--line-2); border-top-color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.skeleton {
+  height: 13px; border-radius: 6px; background: var(--bg-soft); margin-bottom: 8px;
+  animation: pulse 1.3s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+/* ---------- 保存状态 ---------- */
+
+.save-state { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.save-state.dirty { color: var(--amber); }
+.save-state.saved { color: var(--herb); }
+
+/* ---------- 杂项 ---------- */
+
+a.brand { text-decoration: none; color: inherit; }
+a.brand:hover { text-decoration: none; }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+a.btn:hover { text-decoration: none; }
+
+button.role-card { font: inherit; width: 100%; }
+button.role-card:hover { background: var(--surface); }
+
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.hidden { display: none !important; }
+
+@media (max-width: 620px) {
+  .wrap { padding: 18px 14px 70px; }
+  .card { padding: 16px; }
+  .dish-meta { margin-left: 0; width: 100%; }
+  .row { flex-wrap: wrap; }
+  .row .fixed-140, .row .fixed-100 { width: 100%; }
+}
