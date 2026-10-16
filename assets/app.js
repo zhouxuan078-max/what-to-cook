@@ -78,24 +78,23 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
     h += '<button class="role-card" id="go-cook">' +
          '<div class="em">🍳</div>' +
          '<h3>' + (saved ? '继续安排这一顿' : '我来下厨') + '</h3>' +
-         '<p>' + (saved
-            ? '你已经存了 ' + (saved.ingredients || []).length + ' 样食材、' +
-              (saved.dishes || []).length + ' 道菜，接着改。'
-            : '填食材、让 AI 推荐、挑菜、生成分享二维码。') + '</p>' +
+         /* 没存过东西时这里不写字 —— 标题和按钮已经说清了 */
+         (saved
+            ? '<p>你已经存了 ' + (saved.ingredients || []).length + ' 样食材、' +
+              (saved.dishes || []).length + ' 道菜，接着改。</p>'
+            : '') +
          '<div class="go">' + (saved ? '接着弄 →' : '开始选菜 →') + '</div>' +
          '</button>';
 
     h += '<button class="role-card" id="go-guest">' +
          '<div class="em">🍽</div>' +
          '<h3>我来点菜</h3>' +
-         '<p>扫一下（或点开）他发来的二维码／链接，就能看到他排的菜单。挑想吃的、给想吃的程度打个星，再把点单发回给他。</p>' +
          '<div class="go">去看菜单 →</div>' +
          '</button>';
     h += '</div>';
 
     h += '<div class="card" style="margin-top:20px;text-align:center">' +
          '<h3 style="font-size:15px">手上已经有菜单了？</h3>' +
-         '<p class="hint">把下厨的人发来的那条内容粘进来就能打开 —— 是链接、还是夹在话里的都行。</p>' +
          '<div class="join-row">' +
            '<input type="text" id="join-code" placeholder="粘贴链接，或他发来的那段内容">' +
            '<button class="btn btn-primary" id="btn-join">打开菜单</button>' +

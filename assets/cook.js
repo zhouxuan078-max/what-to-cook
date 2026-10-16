@@ -812,23 +812,16 @@ window.KF = window.KF || {};
     const qrImg = sh.qr ? SH.qrDataUrl(sh.qr, 640) : '';
     let h = '<h3>把菜单发给家人</h3>';
     h += '<p class="small muted" style="margin:8px 0 0">让家人用微信「扫一扫」这个码，' +
-         '打开就是你排好的这份菜单。整份菜单就装在这个码里，' +
-         '所以它在谁手上、什么时候打开都一样能用。</p>';
-
-    /* 后端在的话，一定要把这句话说出来 —— 这正是他要的"点完我这边就收到"。
-       没有后端时这句就不出现，免得说了一个做不到的承诺。 */
-    if (serverOn) {
-      h += '<div class="note-bar ok" style="margin-top:12px">他们选完点「生成点单」，' +
-           '就会直接进你的「收到的点单」—— 不用他们再复制粘贴发给你。</div>';
-    }
+         '打开就是你排好的这份菜单。</p>';
 
     if (qrImg) {
       h += '<div class="qr-box"><img src="' + qrImg + '" alt="菜单二维码"></div>';
-      h += '<p class="hint" style="text-align:center">' +
-           (sh.slim
-             ? '菜单内容比较多，码里省掉了做法和教程；要完整版就用下面的链接。'
-             : '码里的信息比较密，扫的时候让手机离屏幕远一点、对准一点。') +
-           '</p>';
+      /* 只留"码被裁剪过"那一种提示 —— 另一种是扫二维码的通用小贴士，
+         使用者明确圈掉了 */
+      if (sh.slim) {
+        h += '<p class="hint" style="text-align:center">菜单内容比较多，' +
+             '码里省掉了做法和教程；要完整版就用下面的链接。</p>';
+      }
     } else {
       h += '<div class="note-bar warn" style="margin-top:14px">菜单太大，二维码装不下。' +
            '直接用下面的链接发给他们 —— 一样能用。</div>';
@@ -2172,13 +2165,13 @@ window.KF = window.KF || {};
 
     h += '<div class="row">' +
            '<div class="grow"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px">你的称呼</label>' +
-             '<input type="text" data-field="cookName" value="' + U.esc(s.cookName) + '" placeholder="如 阿舟"></div>' +
+             '<input type="text" data-field="cookName" value="' + U.esc(s.cookName) + '" ></div>' +
            '<div class="grow"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px">菜单标题</label>' +
              '<input type="text" data-field="title" value="' + U.esc(s.title) + '" placeholder="今天的菜单"></div>' +
          '</div>';
 
     h += '<div class="field" style="margin-top:14px"><label>给点菜的人一句话</label>' +
-         '<input type="text" data-field="note" value="' + U.esc(s.note) + '" placeholder="如 冰箱里有什么就做什么，随便点"></div>';
+         '<input type="text" data-field="note" value="' + U.esc(s.note) + '" ></div>';
 
     h += '</div>';
 
@@ -2205,10 +2198,7 @@ window.KF = window.KF || {};
       h += '<div class="btn-row">' +
            '<button class="btn btn-primary" id="btn-share-menu">分享给家人（二维码）</button>' +
            '<button class="btn" id="btn-open-guest">预览点菜端</button>' +
-           '</div>' +
-           '<div class="note-bar" style="margin-top:12px">点开是一个二维码，让家人用微信扫一下，' +
-           '打开就是这份菜单，挑想吃的打星就行。整份菜单装在这个码里，不经过任何服务器，' +
-           '断网也打得开。</div>';
+           '</div>';
     }
     h += '</div>';
 

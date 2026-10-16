@@ -147,10 +147,9 @@ window.KF = window.KF || {};
         '<div class="card"><div class="note-bar err">' + U.esc(s.error) + '</div>' +
         '<div class="field"><label>把下厨的人发来的链接粘到这里</label>' +
         '<div class="join-row" style="margin:0">' +
-        '<input type="text" id="join-code" placeholder="整条链接，或者分享来的那段内容">' +
+        '<input type="text" id="join-code" >' +
         '<button class="btn btn-primary" id="btn-join">打开</button>' +
         '</div>' +
-        '<p class="hint">一整段话也行 —— 里面夹着链接我们也能认出来。</p>' +
         '</div>' +
         '<div class="btn-row" style="margin-top:14px"><a class="btn" href="#/">回首页</a></div>' +
         '</div></div>';
@@ -205,7 +204,7 @@ window.KF = window.KF || {};
     h += '<div class="card">' +
            '<div class="row">' +
              '<div class="grow"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:5px">你叫什么（下厨的人会看到）</label>' +
-               '<input type="text" id="guest-name" data-field="guestName" value="' + U.esc(s.name) + '" placeholder="如 胥安"></div>' +
+               '<input type="text" id="guest-name" data-field="guestName" value="' + U.esc(s.name) + '" ></div>' +
            '</div>' +
            '<div class="hint" style="margin-top:8px">点星星表示想吃的程度，再点一下同一颗可以取消。</div>' +
          '</div>';
