@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-build="20261016e">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>吃什么 · 家里有什么就做什么</title>
+<meta name="description" content="早餐、午餐、晚餐还是夜宵——把家里现有的食材填进去，AI 按这顿饭和当前时令推荐能做的料理，附上热量、营养和注意事项；结果分「正经推荐」和「换换口味」两半，后者每次都不一样。挑好菜单发给想吃什么的人点单，菜单上没有的他自己加；不想开火还能把外卖和下馆子的选项一起发过去。">
+
+<!-- 静态资源是按网址缓存的，同名文件改了内容也不会自动更新。
+     这三行是给支持它们的浏览器（以及部分中间缓存）看的，尽量别缓存这个页面本身。 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<link rel="stylesheet" href="assets/style.css?v=20261016e">
+
+<!-- 手机主屏入口。为什么要这一套，而不是只发 apk：
+     国内安卓手机从 2024 年起对未备案的安装包做拦截（华为管这个叫"应用核准"），
+     自己签的包必然过不了，用户装的时候会被弹"未备案"。而浏览器把网页加到主屏
+     不经过这套校验 —— 这个 App 本来就是一层的浏览器壳，功能全在网页上，
+     所以加主屏的体验和装 apk 是一样的，还省掉了提示和重新安装。
+     下面这些是让"添加到主屏幕"出来是个正经 App 图标（而不是一个书签缩略图）。 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c2552c">
+<link rel="icon" href="assets/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="今天吃什么">
+
+<!-- 版本自检：光给资源加版本号还不够 —— 如果这个 HTML 本身被浏览器缓存了，
+     它引用的一直是旧那一套资源，页面就会「看起来修过、其实没修」。
+     所以每次加载都悄悄问一次服务端的最新构建号，对不上就带着新版本号重进。
+     网址一变浏览器就不会再用缓存，用户不需要手动强刷，点菜的人也一样。 -->
+<script>
+(function () {
+  var BUILD = '20261016e';
+  window.__KF_BUILD = BUILD;
+
+  function check() {
+    if (!window.fetch) return;
+    fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (t) {
+        t = String(t == null ? '' : t).trim();
+        if (!t || t === BUILD) return;
+        /* 当前网址已经带着这个版本号了，说明换过了也没用，别再跳，避免打转 */
+        if (location.search.indexOf('v=' + t) >= 0) return;
+        location.replace(location.pathname + '?v=' + encodeURIComponent(t) + location.hash);
+      })
+      .catch(function () { /* 自检失败不影响使用 */ });
+  }
+
+  setTimeout(check, 600);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+})();
+</script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#/">
+      <b>吃什么</b>
+      <span>食材 → AI 推荐 → 分享点单</span>
+    </a>
+    <a class="btn btn-sm" href="#/">首页</a>
+  </div>
+</header>
+
+<main id="view">
+  <div class="wrap">
+    <div class="card" style="margin-top:40px">
+      <div class="skeleton" style="width:30%;height:20px"></div>
+      <div class="skeleton" style="width:58%"></div>
+      <div class="skeleton" style="width:44%"></div>
+      <p class="small muted" style="margin:14px 0 0">正在载入…</p>
+    </div>
+  </div>
+</main>
+
+<div class="toasts"></div>
+
+<noscript>
+  <div class="wrap"><div class="card"><div class="note-bar err">这个页面需要开启 JavaScript 才能使用。</div></div></div>
+</noscript>
+
+<!-- 云服务 SDK 自己托管。
+     以前这里引用的是 cdn.jsdelivr.net —— 那台服务器在境外，国内网络下经常
+     连不上或要等十几秒。SDK 一加载不出来，页面就是白屏（云端读写全废），
+     表现就是「链接打不开」。现在把这份 60KB 的 SDK 放在自己的域名下，
+     跟其它静态资源一样快，不再依赖任何境外服务。 -->
+<script src="assets/vendor/wbcloud.js?v=20261016e"></script>
+<script src="assets/config.js?v=20261016e"></script>
+<script src="assets/ui.js?v=20261016e"></script>
+<script src="assets/cloud.js?v=20261016e"></script>
+<script src="assets/ai.js?v=20261016e"></script>
+<script src="assets/cook.js?v=20261016e"></script>
+<script src="assets/guest.js?v=20261016e"></script>
+<script src="assets/app.js?v=20261016e"></script>
+
+</body>
+</html>
