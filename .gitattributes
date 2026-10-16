@@ -1,0 +1,39 @@
+# 行尾统一成 LF。
+#
+# 这台开发机是 Windows，git 默认的 core.autocrlf 会在提交/检出时把 LF 改成 CRLF，
+# 结果是：同一个文件在别人机器上和这里 diff 起来满屏都是行尾差异，
+# 把一个字的改动显示成整个文件被改。
+#
+# 这里显式钉死：文本一律 LF，二进制不做任何转换。
+* text=auto eol=lf
+
+*.js      text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.sql     text eol=lf
+*.txt     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.xml     text eol=lf
+
+# Windows 脚本必须是 CRLF（LF 的 .bat 在 if 块里可能出错），单独放行
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# 二进制：一律不做行尾转换，也别让 git 尝试合并
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.webp    binary
+*.apk     binary
+*.zip     binary
+*.woff    binary
+*.woff2   binary
+
+# GitHub 语言统计：vendor 里的 SDK 不是本项目代码，别算进去
+assets/vendor/* linguist-vendored
