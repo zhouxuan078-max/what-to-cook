@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 站点自己就是一整屏的界面（顶上那条标题栏是页面里画的），
+         所以这里不要系统 ActionBar，免得顶上出现两条。
+         用 Light 主题：WebView 的 prefers-color-scheme 跟着它走，
+         站点就会用它自己那套浅色配色。 -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/shell_bg</item>
+        <item name="android:statusBarColor">@color/shell_brand</item>
+        <item name="android:navigationBarColor">@color/shell_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,303 @@
+name: 打包安卓安装包
+
+# 在 GitHub 自己的构建机上把站点打包成 APK。
+#
+# 为什么不在本机打：本机没有 JDK / Android SDK，而安卓 SDK 的下载源
+# （dl.google.com）在国内基本拉不动 —— 装一次要跟网络搏斗半天。
+# GitHub 的构建机自带 JDK + 整个 Android SDK，只要推一次代码就出包。
+#
+# 触发：改到站点文件或安卓工程时自动跑；也可以在 Actions 页手动点。
+#
+# 排查约定：这个工作流**不指望你打开浏览器翻日志**。
+# 失败时会把关键几行摊成 GitHub 的「检查注解」（::error::），
+# 那个接口不用登录就能读 —— 用 API 或者命令行都能直接看到是哪一行炸的。
+# （运行日志本身是要登录的，注解不用。）
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'version.txt'
+      - 'assets/**'
+      - 'android-app/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+# 挂 Release 需要写权限。
+# ⚠️ 如果仓库在 Settings → Actions → General → Workflow permissions 里被设成
+#    「只读」，这里会被降级，挂 Release 就会 403 —— 那个失败会摊成注解告诉你。
+permissions:
+  contents: write
+
+# 两次构建同时改同一个 Release 会打架，排队来
+concurrency:
+  group: android-apk
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 不用 ./gradlew：仓库里没有 gradle-wrapper.jar（本机没 JDK 生不出来）。
+      # 直接把固定版本的 Gradle 拽下来，省得依赖构建机上预装的是哪个版本。
+      - name: 装 Gradle 8.7
+        run: |
+          curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt
+          echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
+
+      # 构建机上的 SDK 路径偶尔和印象里的不一样（镜像换版、变量没设都会踩）。
+      # 这里自己找一遍并写进 local.properties ——
+      # 「SDK location not found」是 AGP 在 CI 上最常见的一类失败，
+      # 与其猜 ANDROID_HOME 有没有值，不如落成文件。
+      - name: 认出安卓 SDK 并写进 local.properties
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            for c in /usr/local/lib/android/sdk "$HOME/Android/Sdk" /opt/android-sdk; do
+              if [ -d "$c" ]; then SDK="$c"; break; fi
+            done
+          fi
+          echo "ANDROID_HOME=${ANDROID_HOME:-（空）}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-（空）}"
+          echo "挑中的 SDK = $SDK"
+          if [ ! -d "$SDK" ]; then
+            echo "::error::找不到安卓 SDK（ANDROID_HOME 和几个常见目录都是空的）"
+            exit 1
+          fi
+          echo "── platforms ──";   ls "$SDK/platforms"   || true
+          echo "── build-tools ──"; ls "$SDK/build-tools" || true
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          echo "sdk.dir=$SDK" > android-app/local.properties
+          echo "── java ──";   java -version 2>&1 | head -2
+          echo "── gradle ──"; gradle --version 2>&1 | head -6
+
+      # 签名钥匙必须在打包前就能被 Java 读出来。
+      # 读不出来的话，报错会拖到打包最后一步才出现，且看不出是哪儿的毛病。
+      - name: 预检签名钥匙
+        run: |
+          keytool -list -keystore android-app/keystore.p12 \
+            -storetype PKCS12 -storepass what-to-cook
+          # 别名对不对也要查 —— keytool -list 只要文件能读就返回 0，
+          # 别名写错它照样"成功"，然后打包时才报 No key with alias。
+          keytool -list -keystore android-app/keystore.p12 \
+            -storetype PKCS12 -storepass what-to-cook \
+            | grep -q "key0" || { echo "::error::钥匙里没有别名 key0"; exit 1; }
+
+      # ⚠️ 站点文件必须搬进 assets 才能被打进包里。
+      #    这里搬的是仓库根目录那一份 —— 也就是 GitHub Pages / Cloudflare Pages
+      #    正在发的那一份，两边不会不一致。
+      #    _worker.js / _routes.json 是服务端的东西，包进 APK 没意义，不搬。
+      - name: 把站里的文件搬进 App
+        run: |
+          rm -rf android-app/app/src/main/assets
+          mkdir -p android-app/app/src/main/assets
+          cp -r index.html manifest.json version.txt assets android-app/app/src/main/assets/
+          du -sh android-app/app/src/main/assets
+          echo "── assets 根目录 ──"; ls -1 android-app/app/src/main/assets
+          echo "── assets/assets ──"; ls -1 android-app/app/src/main/assets/assets
+          for f in index.html version.txt manifest.json \
+                   assets/net.js assets/app.js assets/cook.js assets/guest.js \
+                   assets/style.css assets/vendor/qrcode.js; do
+            if [ -e "android-app/app/src/main/assets/$f" ]; then echo "  ✓ $f"
+            else echo "::error::搬运之后 assets 里没有 $f（搬之前它就不在仓库根目录？）"; exit 1; fi
+          done
+
+      - name: 打包
+        working-directory: android-app
+        run: |
+          set -o pipefail
+          gradle assembleRelease --no-daemon --stacktrace --console=plain \
+            -Pvc=${{ github.run_number }} -Pvn=1.${{ github.run_number }} 2>&1 \
+            | tee /tmp/gradle.log
+
+      # 构建日志在网页里，而「能打开浏览器翻日志」不该是排查的前提。
+      # GitHub 的检查注解**不用登录就能读**，所以把关键几行直接摊成注解。
+      - name: 失败了就把关键几段摊成注解
+        if: failure()
+        run: |
+          L=/tmp/gradle.log
+          if [ ! -f "$L" ]; then
+            echo "::error::连 gradle 日志都没生成，说明挂在更早的步骤上"
+            exit 0
+          fi
+          # 整段整段地抓（What went wrong / Caused by / Try / 失败的 task），
+          # 因为报错原因常常在"下一行"，只抓含 error 的那一行是抓不到真凶的。
+          # 多行要转义成 %0A 才能塞进一条注解，否则注解在第一行就断了。
+          python3 - <<'PYEOF' || tail -n 20 "$L"
+          import re
+          lines = open('/tmp/gradle.log', encoding='utf-8', errors='replace').read().splitlines()
+          blocks = []
+          def add(title, body):
+              body = body.strip('\r\n ')
+              if body:
+                  blocks.append(title + '  ' + body)
+          for i, l in enumerate(lines):
+              s = l.strip()
+              if s.startswith('* Where:'):
+                  add('[Where]', '\n'.join(lines[i:i + 4]))
+              elif 'What went wrong' in l:
+                  add('[What went wrong]', '\n'.join(lines[i:i + 16]))
+              elif re.match(r'Caused by\b', s):
+                  add('[Caused by]', '\n'.join(lines[i:i + 4]))
+              elif s.startswith('* Try:'):
+                  add('[Try]', '\n'.join(lines[i:i + 5]))
+              elif 'Execution failed for task' in l:
+                  add('[Failed task]', '\n'.join(lines[i:i + 4]))
+              elif 'Could not' in l or 'Unsupported' in l or 'not found' in l:
+                  if ' at ' not in l:
+                      add('[线索]', l)
+          seen, out = set(), []
+          for b in blocks:
+              k = b[:120]
+              if k in seen:
+                  continue
+              seen.add(k)
+              b = b[:900].replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+              out.append('::error::' + b)
+          print('\n'.join(out[:12]) or '::error::没抓到可读的报错，日志最后 20 行如下' ,
+                end='')
+          print('', end='\n')
+          PYEOF
+          exit 0
+
+      # ⚠️ 这一步里**不能**用裸的 `exit 1`。
+      #    构建日志要登录才能看，而注解不用登录 ——
+      #    所以每一处失败都必须先 echo 一条 ::error:: 说清是什么，
+      #    否则排查的人只会看到一个光秃秃的 "Process completed with exit code 1"。
+      - name: 取出来并体检
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+
+          APK=$(find android-app/app/build/outputs/apk -name '*.apk' -type f 2>/dev/null | sort | tail -1)
+          if [ -z "$APK" ]; then
+            fail "构建完了却没找到 .apk。outputs 目录长这样：$(ls -R android-app/app/build/outputs 2>&1 | head -30 | tr '\n' ' ')"
+          fi
+          echo "APK = $APK"
+
+          mkdir -p out
+          cp "$APK" out/WhatToCook.apk || fail "复制 APK 到 out/ 失败"
+          ls -lh out/
+
+          echo "── 包名 / 版本 / 名字 ──"
+          BT=$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* 2>/dev/null | sort -V | tail -1)
+          if [ -n "$BT" ] && [ -x "$BT/aapt2" ]; then
+            "$BT/aapt2" dump badging out/WhatToCook.apk 2>&1 | head -6 || true
+          else
+            echo "（没找到 aapt2，跳过这一步。build-tools 目录 = ${BT:-无}）"
+          fi
+
+          echo "── 站点文件在不在里面 ──"
+          unzip -l out/WhatToCook.apk > /tmp/ziplist.txt || fail "unzip 读不了这个 APK"
+          echo "包内带 assets/ 的条目共 $(grep -c 'assets/' /tmp/ziplist.txt) 条"
+          grep 'assets/' /tmp/ziplist.txt | awk '{print "  " $NF}'
+
+          missing=""
+          for f in assets/index.html assets/version.txt assets/manifest.json \
+                   assets/assets/net.js assets/assets/app.js assets/assets/cook.js \
+                   assets/assets/guest.js assets/assets/style.css \
+                   assets/assets/vendor/qrcode.js; do
+            if grep -q -- "$f" /tmp/ziplist.txt; then echo "  ✓ $f"
+            else echo "  ✗ 缺 $f"; missing="$missing $f"; fi
+          done
+          if [ -n "$missing" ]; then
+            fail "APK 里少了这些站点文件：$missing"
+          fi
+
+          # ⚠️ 这一段查的是「壳里那条网络通道」有没有被真的打进去。
+          #    它哑掉的时候是不报错的 —— 表现只是家人提交完、下厨的人永远等不到，
+          #    所以宁可在这里把地址和回调落点都抠出来看一眼。
+          #    （net.js 在包里是 assets/assets/net.js。地址换了域名的话，
+          #      MainActivity.java 里的 API_ORIGIN 也要一起改，两处必须一致。）
+          echo "── 壳里那条网络通道 ──"
+          unzip -p out/WhatToCook.apk assets/assets/net.js > /tmp/net.js || fail "抠不出 net.js"
+          grep -q 'httpRequest' /tmp/net.js \
+            || fail "net.js 里没有 httpRequest —— 壳里的请求发不出去，自动收单会整条哑掉（而且不报错）"
+          grep -q 'KF_HTTP' /tmp/net.js \
+            || fail "net.js 里没有 KF_HTTP 回调落点 —— 原生就算发了请求也送不回页面"
+          API=$(grep -oE 'https://[a-z0-9.-]+\.pages\.dev' /tmp/net.js | head -1)
+          if [ -z "$API" ]; then
+            fail "net.js 里没找到后端的绝对地址（壳里靠它才能绕过跨域限制）"
+          fi
+          echo "  ✓ net.js 里有 httpRequest 和 KF_HTTP 回调落点"
+          echo "  后端绝对地址 = $API"
+          grep -q -- "$API" android-app/app/src/main/java/com/zhouxuan/whattocook/MainActivity.java \
+            || fail "net.js 用的是 $API，但 MainActivity 里的 API_ORIGIN 不是它 —— 壳里的白名单会把请求全挡掉"
+
+          echo "── 指纹 ──"
+          sha256sum out/WhatToCook.apk
+
+      - name: 传成 Actions 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: WhatToCook.apk
+          path: out/WhatToCook.apk
+          if-no-files-found: error
+
+      # 挂在 Release 上，别人**不用登录**就能下：
+      #   https://github.com/zhouxuan078-max/what-to-cook/releases/latest/download/WhatToCook.apk
+      # 文件名故意用纯英文 —— 中文名的直链要转码，发给别人很别扭。
+      - name: 挂到 Release（别人不用登录就能下）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/note.md <<'EOF'
+          ## 吃什么 · 安卓版
+
+          **下载下面的 `WhatToCook.apk`，传到手机上点开装上就行。**
+          安卓会提示「来自未知来源的应用」，允许一下即可。
+
+          ### 装它有什么好处
+          - 桌面直接有图标，不用记网址、不经过浏览器
+          - 菜单、食材、点单记录存在 App 自己那儿，
+            **不会被「清除浏览器缓存」带走**
+          - 家人点完「生成点单」，下厨的人那边**自动就收到了** ——
+            App 里带了一条不经浏览器的网络通道，专门干这个
+            （网页版要靠后端同源，App 里绕过了这一层限制）
+
+          ### 说明
+          - 不申请通讯录 / 短信 / 相机 / 存储等任何敏感权限，
+            只申请了联网（自动收单要用）
+          - 想更新：下载新版 APK **直接覆盖安装**即可，数据会保留
+            （签名是固定的，所以能覆盖；不用先卸载）
+          - 手机上打不开 GitHub 的话，用电脑先下好，再用微信 / QQ 传过去
+          EOF
+
+          set +e
+          gh release view apk-latest >/dev/null 2>&1 \
+            || gh release create apk-latest \
+                 --title "吃什么 · 安卓安装包（最新版）" --notes-file /tmp/note.md
+          gh release upload apk-latest out/WhatToCook.apk --clobber
+          gh release edit apk-latest \
+            --title "吃什么 · 安卓安装包（最新版）" --notes-file /tmp/note.md
+          code=$?
+          set -e
+          if [ "$code" != "0" ]; then
+            echo "::error::APK 已经打好了，但没能挂到 Release（上面那条 gh 的报错就是原因）。最常见的一条：仓库 Actions 权限是只读 —— 去 Settings → Actions → General → Workflow permissions 选 Read and write permissions。在那之前，本次运行的 Artifacts 里也能下载到 APK。"
+            exit 1
+          fi
+
+      - name: 写个摘要
+        if: always()
+        run: |
+          {
+            echo "### 打包结果"
+            echo ""
+            echo "- 版本：1.${{ github.run_number }}"
+            if [ -f out/WhatToCook.apk ]; then
+              echo "- 体积：$(du -h out/WhatToCook.apk | cut -f1)"
+              echo "- 直链：https://github.com/zhouxuan078-max/what-to-cook/releases/latest/download/WhatToCook.apk"
+            else
+              echo "- **没有产出 APK**，看上面的日志／注解"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -70,6 +70,38 @@
 
 要用它见下面的「后端」。
 
+### ③ 装成 App：安卓安装包（可选）
+
+整个站点也能打成一个 APK，推到 `main` 后由 GitHub Actions 自动出包，挂在
+Release `apk-latest` 上：
+
+```
+https://github.com/zhouxuan078-max/what-to-cook/releases/latest/download/WhatToCook.apk
+```
+
+装上以后桌面直接有图标、不经过浏览器，菜单和点单记录也不会被「清除浏览器缓存」
+带走。工程在 `android-app/`，细节见那里的 `README.md`。
+
+★ **壳里 ② 换了一条腿走路，这是这个 App 最要紧的一处。**
+
+页面在壳里跑在假域名 `appassets.androidplatform.net` 上，站里写的**相对地址**
+`/api/...` 会指到壳自己身上（那边没有后端，必然 404）；而让页面的 `fetch`
+直接连真后端也不行 —— 真后端**故意**不返回任何 CORS 头（见「安全边界」），
+跨域会被浏览器拦下。
+
+所以壳里改由**原生代码**去发这条 HTTP 请求：原生发请求不涉及同源策略，
+CORS 这回事根本不存在，后端也就不必为了 App 去开那个口子。
+页面那一侧在 `assets/net.js`（`reqViaShell` + `window.KF_HTTP.done`），
+原生那一侧在 `android-app/.../MainActivity.java`（`httpRequest`），
+两边靠一个编号 `id` 对号入座。
+
+网页那边一个字节都没变：判据是 `AndroidShell.httpRequest` 这个方法存不存在，
+浏览器里没有它，`req` 照旧走 `fetch`。
+
+> 🔴 后端地址在**两处**写着，改一个就得改另一个：
+> `assets/net.js` 的 `API_BASE` 和 `MainActivity.java` 的 `API_ORIGIN`。
+> CI 里有一道检查会把它们对一下。
+
 ## 目录结构
 
 ```
@@ -91,6 +123,8 @@
 │   ├── vendor/qrcode.js    二维码生成（第三方，MIT，见下）
 │   └── *.png               图标
 ├── backend/                早期云后端的 SQL，**已废弃**，见下
+├── android-app/            安卓安装包的工程（见那里的 README）
+├── .github/workflows/      推到 main 时自动打 APK 并挂到 Release
 └── docs/                   README 用的截图
 ```
 
@@ -234,6 +268,13 @@ Cloudflare Pages 用控制台「上传静态文件」直接发布时，**不能�
   而且在免费额度下也更从容。
 - **菜的质量取决于你自己那个 AI。** 站里不调任何模型：提示词由 `assets/ai.js`
   拼好给你复制走，菜是你手机上的 AI 出的。菜谱链接来自公开搜索，不保证每条都能打开。
+- **安卓版里「看教程」会在系统浏览器里打开**，不在 App 内。
+  壳里没有地址栏、没有返回键，开进去就出不来，所以统一交给浏览器。
+- **安卓版的自动收单要联网。** 断网时 App 照常能开菜单、看食材、配额，
+  只是点单发不出去 —— 那时界面会安静地退回「生成链接 / 二维码」那条离线通道，
+  和网页版一致。
+- **安卓版不处理分享链接的深链。** 家人收到 `…/#/o/…` 这样的链接，
+  点开会进浏览器而不是 App。那条路本身是通的（浏览器里就是同源），所以没加 Intent 过滤。
 
 ## 已经砍掉的东西
 

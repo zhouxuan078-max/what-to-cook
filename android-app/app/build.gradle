@@ -1,0 +1,70 @@
+plugins { id 'com.android.application' }
+
+/* ⚠️ 版本号在 android{} **外面**先算好。
+   直接在 defaultConfig 里 `findProperty(...).toInteger()` 的话，
+   取值发生在 extension 正被配置的时候，链条上有个 null 就钻进来了，
+   CI 上报的是一句看不出所以然的 `IllegalArgumentException: Value is null`。
+
+   由 CI 传进来：-Pvc=<构建序号> -Pvn=1.<构建序号>
+   versionCode 必须**只增不减**，不然覆盖安装会被系统拒掉。 */
+def BUILD_NO = (project.findProperty('vc') ?: '1').toString().trim().toInteger()
+def BUILD_NAME = (project.findProperty('vn') ?: '1.0').toString().trim()
+
+android {
+    namespace 'com.zhouxuan.whattocook'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.zhouxuan.whattocook'
+        minSdk 26
+        targetSdk 34
+        versionCode BUILD_NO
+        versionName BUILD_NAME
+    }
+
+    signingConfigs {
+        fixed {
+            storeFile file('../keystore.p12')
+            storeType 'PKCS12'
+            storePassword 'what-to-cook'
+            keyAlias 'key0'
+            keyPassword 'what-to-cook'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            /* 用 getByName 而不是 signingConfigs.fixed：
+               后者是 Groovy 的动态属性查询，拿到 null 时 AGP 只会抛
+               `Value is null`，看不出是哪儿。getByName 会直接说"没有这个名字"。 */
+            signingConfig signingConfigs.getByName('fixed')
+        }
+        /* ⚠️ debug 也**不能**用工具链自动生成的那把钥匙。
+           在干净的构建机上 AGP 每次都现造一把新的 debug.keystore，
+           两次构建签名就不同 —— 装新版会「应用未安装」，
+           必须先卸载旧的（家里的菜单、点单记录全跟着没）。
+           固定成同一把钥匙，覆盖安装才是**升级**而不是重装。 */
+        debug {
+            signingConfig signingConfigs.getByName('fixed')
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    /* 只用它一个东西：WebViewAssetLoader。
+       作用是把安装包里的本地文件当成一个正经的 https 站点喂给 WebView ——
+       不这样做，站里的 fetch 和 localStorage 都会被 file:// 的同源策略废掉。
+       见 MainActivity 顶部那三段说明。 */
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

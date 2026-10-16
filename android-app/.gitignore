@@ -1,0 +1,10 @@
+# 站点文件是构建时从仓库根目录拷进来的，不进版本库 ——
+# 否则每改一次站就要在仓库里再存一份副本，而且两边迟早不一致。
+app/src/main/assets/
+
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/

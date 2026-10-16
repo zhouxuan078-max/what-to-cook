@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 和站点 style.css 里的品牌色、背景色是同一组颜色，别各写各的。
+         站点的主题色就从 manifest.json 的 theme_color / background_color 抄来的。 -->
+    <color name="shell_brand">#C2552C</color>
+    <color name="shell_bg">#FAF7F1</color>
+    <color name="ic_launcher_background">#C2552C</color>
+</resources>

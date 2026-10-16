@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-build="20261016j">
+<html lang="zh-CN" data-build="20261016k">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,7 +12,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<link rel="stylesheet" href="assets/style.css?v=20261016j">
+<link rel="stylesheet" href="assets/style.css?v=20261016k">
 
 <!-- 手机主屏入口。为什么要这一套，而不是只发 apk：
      国内安卓手机从 2024 年起对未备案的安装包做拦截（华为管这个叫"应用核准"），
@@ -35,7 +35,7 @@
      网址一变浏览器就不会再用缓存，用户不需要手动强刷，点菜的人也一样。 -->
 <script>
 (function () {
-  var BUILD = '20261016j';
+  var BUILD = '20261016k';
   window.__KF_BUILD = BUILD;
 
   function check() {
@@ -101,15 +101,18 @@
          家人提交后下厨的人那边自动就收到。没配后端时这条自动失效，
          页面安静地退回离线通道，不报错、不白屏。
 
-     所以除了版本自检和（配了后端时的）收单请求，这个页面不向外部地址发请求。 -->
-<script src="assets/ui.js?v=20261016j"></script>
-<script src="assets/vendor/qrcode.js?v=20261016j"></script>
-<script src="assets/share.js?v=20261016j"></script>
-<script src="assets/net.js?v=20261016j"></script>
-<script src="assets/ai.js?v=20261016j"></script>
-<script src="assets/cook.js?v=20261016j"></script>
-<script src="assets/guest.js?v=20261016j"></script>
-<script src="assets/app.js?v=20261016j"></script>
+     所以除了版本自检和（配了后端时的）收单请求，这个页面不向外部地址发请求。
+     ── 安卓安装包里是个例外：那边页面在壳给的假域名上，收单请求走不通，
+        改由壳的原生代码发到真后端去（见 assets/net.js 里那段说明）。
+        从页面这一侧看还是一条请求，只是底下换了人发。 -->
+<script src="assets/ui.js?v=20261016k"></script>
+<script src="assets/vendor/qrcode.js?v=20261016k"></script>
+<script src="assets/share.js?v=20261016k"></script>
+<script src="assets/net.js?v=20261016k"></script>
+<script src="assets/ai.js?v=20261016k"></script>
+<script src="assets/cook.js?v=20261016k"></script>
+<script src="assets/guest.js?v=20261016k"></script>
+<script src="assets/app.js?v=20261016k"></script>
 
 </body>
 </html>

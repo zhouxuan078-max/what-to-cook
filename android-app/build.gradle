@@ -1,0 +1,5 @@
+/* 安卓安装包的构建配置（顶层）。
+   实际打包在 GitHub Actions 上跑，见仓库根目录 .github/workflows/android.yml。 */
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
