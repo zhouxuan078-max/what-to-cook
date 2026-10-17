@@ -102,7 +102,7 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
          '</div>';
 
     /* 装成 App 的入口。
-       ★ 动手改这段之前，先把下面四条读一遍 —— 每条都是别人踩过的坑：
+       ★ 动手改这段之前，先把下面几条读一遍 —— 每条都是踩过的坑：
        1. 只能是**链接**。不许 location.href 跳、不许脚本去触发下载。
           页面一打开就往人手机里塞文件，谁看了都会当成流氓站，这是最要紧的一条。
        2. 放在首页正文里，不当浮层、不弹窗、进去不自动展开。
@@ -111,19 +111,15 @@ window.KF.state = window.KF.state || { route: { name: 'home' }, cook: null, gues
           net.js 那一处，别在这儿再照写一遍「有没有 AndroidShell」：
           英语台那个壳也挂了 AndroidShell，这么写会把网页版误判成 App 里。
        4. net.js 没加载成功时（理论上不会）按"在网页里"处理 —— 宁可多显示
-          一个链接，也不要让人想装却没处点。 */
+          一个链接，也不要让人想装却没处点。
+       5. ★ **不要往这儿加说明小字**。体积、iPhone 怎么办、"未知来源"怎么点
+          —— 这些用户明确说过不要，写在这里只会变成没人读的一坨。
+          平台信息靠按钮本身的「安卓」两个字就够传达了。 */
     if (!window.KF.net || !window.KF.net.inShell) {
       h += '<div class="card" style="text-align:center">' +
-           '<h3 style="font-size:15px">想在手机桌面上点开就用？</h3>' +
+           '<h3 style="font-size:15px">装到手机上</h3>' +
            '<div class="btn-row" style="justify-content:center;margin-top:12px">' +
              '<a class="btn" href="https://github.com/zhouxuan078-max/what-to-cook/releases/latest/download/WhatToCook.apk">下载安卓安装包</a>' +
-           '</div>' +
-           '<div class="hint" style="margin:11px auto 0;max-width:460px">' +
-             /* 这两句之间必须手动断行。让浏览器自己折的话，在 500px 上下
-                会折成三行、末行只剩「可。」两个字，很难看 —— 而且窗口宽度
-                一变就在两行/三行之间跳。断在这里，任何宽度都齐整。 */
-             '约 0.5 MB，只对<b>安卓手机</b>有用 —— iPhone 和电脑上直接用网页就行。<br>' +
-             '没上应用商店，安装时可能提示「未知来源」，允许一次即可。' +
            '</div>' +
            '</div>';
     }
