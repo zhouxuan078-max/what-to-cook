@@ -249,5 +249,11 @@ window.KF = window.KF || {};
     resetPing: resetPing,
     postOrder: postOrder,
     fetchOrders: fetchOrders,
+    /* 是不是跑在安卓安装包那个壳里。
+       首页要靠它决定「要不要显示下载 App 的入口」—— 人在 App 里，
+       再劝他装 App 就很傻。
+       ⚠️ 这个判据只能有这一处。别的文件要用就取这个，别再写一遍：
+       写岔了就会冒出「明明在 App 里，页面上还挂着下载按钮」这种事。 */
+    inShell: SHELL,
   };
 })();
