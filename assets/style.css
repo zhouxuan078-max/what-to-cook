@@ -26,6 +26,7 @@
   --radius: 14px;
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgba(36, 31, 25, .05), 0 10px 28px -16px rgba(36, 31, 25, .22);
+  --shadow-2: 0 2px 4px rgba(36, 31, 25, .06), 0 18px 34px -18px rgba(36, 31, 25, .32);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
           "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
 }
@@ -618,9 +619,16 @@ details.steps li { margin-bottom: 5px; }
 
 /* ---------- 首页 ---------- */
 
-.home-hero { text-align: center; padding: 34px 0 26px; }
-.home-hero h1 { font-size: 31px; }
-.home-hero p { color: var(--muted); margin: 8px auto 0; max-width: 520px; }
+/* 首页单独收窄到 800。
+   内页（菜单、点单）要 1080 才放得下那么多列，但首页只有四张卡，
+   摊到 1080 宽之后每张卡的内容只占左边三分之一，右边一整片白，
+   看着像没做完。用 :has() 只挑出「带首屏大标题的那个 wrap」，
+   不动别的页面；老浏览器不认 :has() 就还是 1080，不会坏。 */
+#view > .wrap:has(> .home-hero) { max-width: 800px; }
+
+.home-hero { text-align: center; padding: 24px 0 20px; }
+.home-hero h1 { font-size: 27px; letter-spacing: -.01em; }
+.home-hero p { color: var(--muted); margin: 9px auto 0; max-width: 30em; font-size: 14.5px; }
 
 .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
 @media (max-width: 700px) { .role-grid { grid-template-columns: 1fr; } }
@@ -630,13 +638,18 @@ details.steps li { margin-bottom: 5px; }
   border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
   transition: .16s ease;
 }
-.role-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-.role-card .em { font-size: 27px; }
-.role-card h3 { font-size: 17px; margin: 10px 0 6px; }
+/* 抬起来的时候阴影要跟着变深，只挪 2px 不给影子，看着是"卡片在抖"不是"卡片浮起来" */
+.role-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-2); }
+.role-card .em { font-size: 25px; }
+.role-card h3 { font-size: 16.5px; margin: 9px 0 5px; }
 .role-card p { margin: 0; font-size: 13.5px; color: var(--muted); }
-.role-card .go { margin-top: 14px; font-size: 13.5px; color: var(--primary); font-weight: 600; }
+.role-card .go { margin-top: 13px; font-size: 13.5px; color: var(--primary); font-weight: 600; }
 
-.join-row { display: flex; gap: 10px; max-width: 460px; margin: 22px auto 0; }
+.join-row { display: flex; gap: 10px; max-width: 460px; margin: 20px auto 0; }
+/* 输入框和按钮必须一样高。原来输入框按自身内容撑到 40，按钮 44，
+   并排一看就是差那么一截，怎么都对不齐。 */
+.join-row > input, .join-row > .btn { height: 44px; box-sizing: border-box; }
+.join-row .btn { margin-top: 0; }
 /* 这个框以前装的是 6 位菜单码，居中、加字距、转大写都合适。
    现在它装的是"粘进来的一整段内容"（可能是一条一千多字符的链接），
    那三样都会让它没法看，所以整组取消掉，改成左对齐的普通输入框。 */
